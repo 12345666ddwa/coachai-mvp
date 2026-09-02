@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoachAI — Real-Time Marking Demo</title>
+<style>
+  :root {
+    --paper: #FAFAF7;
+    --ink: #1A2332;
+    --blue: #1F4E79;
+    --blue-soft: #E8EEF5;
+    --orange: #E69F00;
+    --orange-soft: #FDF3E0;
+    --green: #2E7D32;
+    --green-soft: #E8F2E8;
+    --red: #C62828;
+    --red-soft: #FBEAEA;
+    --gray: #6B7684;
+    --line: #E3E7EC;
+    --card: #FFFFFF;
+    --shadow: 0 2px 12px rgba(26,35,50,.08);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--paper); color: var(--ink);
+    min-height: 100vh;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ===== Header ===== */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px; max-width: 860px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15em; }
+  .brand .logo {
+    width: 34px; height: 34px; border-radius: 9px; background: var(--blue);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:.95em;
+  }
+  .brand .tag {
+    font-size:.62em; font-weight:600; color:var(--orange); border:1.5px solid var(--orange);
+    padding:2px 8px; border-radius:20px; letter-spacing:.4px; text-transform:uppercase;
+  }
+  .lang-btn {
+    background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:6px 14px; font-size:.85em; cursor:pointer; color:var(--ink); font-weight:600;
+    transition:all .2s;
+  }
+  .lang-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* ===== Hero ===== */
+  .hero { text-align:center; padding: 34px 0 26px; }
+  .hero h1 { font-size: 1.9em; line-height: 1.25; color: var(--ink); }
+  .hero h1 .hl { color: var(--blue); }
+  .hero p { color: var(--gray); margin-top: 10px; font-size: .98em; }
+
+  /* ===== Cards / panels ===== */
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 22px; margin-bottom: 18px;
+  }
+  .panel-title { font-weight: 700; font-size: 1.02em; margin-bottom: 14px; display:flex; align-items:center; gap:8px; }
+  .panel-title .step-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--blue); color:#fff;
+    font-size:.72em; display:inline-flex; align-items:center; justify-content:center;
+  }
+
+  /* Question chips */
+  .q-list { display:flex; flex-direction:column; gap:10px; }
+  .q-chip {
+    border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    cursor: pointer; transition: all .18s; background: var(--card); text-align:left; font-size:.92em;
+  }
+  .q-chip:hover { border-color: var(--blue); }
+  .q-chip.selected { border-color: var(--blue); background: var(--blue-soft); }
+  .q-chip .marks {
+    float: right; font-size:.75em; font-weight:700; color:var(--gray);
+    background:var(--paper); border:1px solid var(--line); border-radius:20px; padding:2px 9px;
+  }
+  .q-chip.selected .marks { color: var(--blue); border-color: var(--blue); }
+
+  /* Input tabs */
+  .input-tabs { display:flex; gap:8px; margin: 14px 0 12px; }
+  .input-tab {
+    flex:1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--line);
+    background: var(--card); cursor:pointer; font-weight:600; font-size:.9em; transition:all .18s;
+    color: var(--gray);
+  }
+  .input-tab.active { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+
+  textarea {
+    width: 100%; min-height: 110px; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 12px; font-size: .95em; font-family: inherit; resize: vertical; color: var(--ink);
+    background: var(--card);
+  }
+  textarea:focus { outline: none; border-color: var(--blue); }
+
+  .dropzone {
+    border: 2px dashed var(--line); border-radius: 12px; padding: 26px; text-align:center;
+    color: var(--gray); font-size: .9em; cursor: pointer; transition: all .18s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--orange); background: var(--orange-soft); }
+  .dropzone .big { font-size: 1.9em; margin-bottom: 6px; }
+  .dropzone img { max-width: 100%; max-height: 180px; border-radius: 8px; margin-top: 10px; }
+  .dropzone .demo-note { font-size:.78em; color:var(--orange); margin-top:8px; font-weight:600; }
+
+  /* Submit */
+  .submit-wrap { text-align: center; margin-top: 16px; }
+  .btn-mark {
+    background: var(--blue); color: #fff; border: none; border-radius: 30px;
+    padding: 13px 44px; font-size: 1.02em; font-weight: 700; cursor: pointer;
+    transition: all .2s; letter-spacing:.2px;
+  }
+  .btn-mark:hover { background: #16395c; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(31,78,121,.3); }
+  .btn-mark:disabled { opacity:.45; cursor: not-allowed; transform:none; box-shadow:none; }
+
+  /* Progress steps */
+  .steps { margin-top: 14px; display:none; }
+  .steps .step {
+    font-size:.88em; color: var(--gray); padding: 5px 0; font-family: "SF Mono", Consolas, monospace;
+    opacity: 0; transition: opacity .25s;
+  }
+  .steps .step.show { opacity: 1; color: var(--ink); }
+  .steps .step.done { color: var(--green); }
+  .steps .step.done::before { content:"✓ "; }
+  .steps .step.wait::before { content:"… "; color: var(--orange); }
+
+  /* Result */
+  .result { display:none; }
+  .result-card {
+    border-radius: 16px; padding: 22px; border: 1.5px solid var(--line); background: var(--card);
+  }
+  .result-top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .score {
+    font-size: 3em; font-weight: 800; color: var(--blue); line-height: 1;
+  }
+  .score .max { font-size: .4em; color: var(--gray); font-weight: 600; }
+  .badges { display:flex; gap:8px; flex-wrap:wrap; }
+  .badge {
+    font-size:.78em; font-weight:700; padding:5px 12px; border-radius: 20px;
+    border: 1.5px solid var(--line);
+  }
+  .badge.high { background: var(--green-soft); color: var(--green); border-color: var(--green); }
+  .badge.medium { background: var(--orange-soft); color: #B26A00; border-color: var(--orange); }
+  .badge.low { background: var(--red-soft); color: var(--red); border-color: var(--red); }
+  .badge.flag { background: var(--red-soft); color: var(--red); border-color: var(--red); }
+
+  .result-sub { color: var(--gray); font-size:.85em; margin: 10px 0 16px; }
+
+  .fb-block { margin-top: 14px; }
+  .fb-head { font-weight: 700; font-size:.92em; margin-bottom: 8px; }
+  .fb-item {
+    display:flex; gap:10px; padding: 9px 12px; border-radius: 10px; margin-bottom: 7px;
+    font-size:.9em; line-height:1.5; background: var(--paper); border:1px solid var(--line);
+  }
+  .fb-item .dot { flex-shrink:0; width:8px; height:8px; border-radius:50%; margin-top:6px; }
+  .fb-item.good .dot { background: var(--green); }
+  .fb-item.improve .dot { background: var(--orange); }
+  .fb-item.rule .dot { background: var(--blue); }
+
+  .practice {
+    margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--orange-soft);
+    border: 1px solid var(--orange); font-size: .9em; line-height: 1.55;
+  }
+  .practice .p-label { font-weight:700; color:#B26A00; display:block; margin-bottom:4px; }
+
+  /* ===== Teacher tab ===== */
+  .tabs { display:flex; gap:8px; margin-bottom: 16px; }
+  .tab {
+    padding: 9px 22px; border-radius: 24px; border: 1.5px solid var(--line); background: var(--card);
+    font-weight:600; font-size:.9em; cursor:pointer; color: var(--gray); transition:all .18s;
+  }
+  .tab.active { background: var(--blue); border-color: var(--blue); color:#fff; }
+
+  .review-item {
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    border:1px solid var(--line); border-radius:12px; padding: 13px 15px; margin-bottom:10px;
+    background: var(--card); flex-wrap:wrap;
+  }
+  .review-item .r-info { flex:1; min-width:200px; }
+  .review-item .r-name { font-weight:600; font-size:.92em; }
+  .review-item .r-meta { font-size:.78em; color: var(--gray); margin-top:3px; }
+  .review-item .r-score { font-weight:800; color: var(--blue); font-size:1.15em; }
+  .review-item .r-actions { display:flex; gap:6px; }
+  .r-btn {
+    border:1.5px solid var(--line); background:var(--card); border-radius:8px;
+    padding:6px 13px; font-size:.8em; font-weight:600; cursor:pointer; transition:all .15s; color:var(--ink);
+  }
+  .r-btn.accept:hover { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .r-btn.edit:hover { background: var(--orange-soft); border-color: var(--orange); color:#B26A00; }
+  .r-btn.reject:hover { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .review-item.accepted { border-color: var(--green); background: var(--green-soft); }
+  .review-item.accepted .r-score { color: var(--green); }
+  .status-text { font-size:.78em; font-weight:700; }
+
+  .empty-state { text-align:center; color:var(--gray); padding: 30px 0; font-size:.92em; display:none; }
+
+  /* Footer */
+  footer {
+    text-align:center; color: var(--gray); font-size:.78em; margin-top: 34px; line-height:1.7;
+  }
+  footer .demo-tag {
+    display:inline-block; background: var(--orange-soft); color:#B26A00; border:1px solid var(--orange);
+    border-radius: 20px; padding: 4px 14px; font-weight:700; margin-bottom: 10px;
+  }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 1.45em; }
+    .score { font-size: 2.4em; }
+    .panel { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">AI</div>
+    <span data-i18n="brand">CoachAI</span>
+    <span class="tag" data-i18n="demoTag">CONCEPT DEMO</span>
+  </div>
+  <button class="lang-btn" id="langBtn" onclick="toggleLang()">中文</button>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <h1 data-i18n="hero1">Your answer, marked against the<br><span class="hl" data-i18n="hero2">official HSC rubric</span></h1>
+    <p data-i18n="heroSub">Type or photograph your answer. CoachAI marks it, shows confidence, and coaches you to the next band.</p>
+  </div>
+
+  <!-- Step 1: question -->
+  <div class="panel">
+    <div class="panel-title"><span class="step-num">1</span> <span data-i18n="qTitle">Choose a question</span></div>
+    <div class="q-list" id="qList"></div>
+  </div>
+
+  <!-- Step 2: answer input -->
+  <div class="panel">
+    <div class="panel-title"><span class="step-num">2</span> <span data-i18n="inTitle">Submit your answer</span></div>
+    <div class="input-tabs">
+      <div class="input-tab active" id="tabText" onclick="switchInput('text')">⌨️ <span data-i18n="tabText">Type</span></div>
+      <div class="input-tab" id="tabPhoto" onclick="switchInput('photo')">📷 <span data-i18n="tabPhoto">Photo of handwritten answer</span></div>
+    </div>
+    <div id="textMode">
+      <textarea id="answerText" data-i18n-ph="answerPh" placeholder="Type your answer here..."></textarea>
+    </div>
+    <div id="photoMode" style="display:none">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <div class="big">📄</div>
+        <span data-i18n="dzText">Tap to upload a photo of your answer</span>
+        <div id="photoPreview"></div>
+        <div class="demo-note" data-i18n="dzNote">Vision mode (demo) — photo is scanned and read like text</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+    </div>
+    <div class="submit-wrap">
+      <button class="btn-mark" id="markBtn" onclick="markAnswer()" data-i18n="markBtn">Mark my answer</button>
+    </div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <!-- Step 3: result -->
+  <div class="panel result" id="resultPanel">
+    <div class="result-card" id="resultCard"></div>
+  </div>
+
+  <!-- Teacher view -->
+  <div class="panel">
+    <div class="tabs">
+      <div class="tab active" id="tabStudent" onclick="switchView('student')" data-i18n="vStudent">Student view</div>
+      <div class="tab" id="tabTeacher" onclick="switchView('teacher')" data-i18n="vTeacher">Teacher review</div>
+    </div>
+    <div id="teacherView" style="display:none">
+      <div class="review-list" id="reviewList"></div>
+      <div class="empty-state" id="emptyReview" data-i18n="emptyReview">No flagged answers — all clear! 🎉</div>
+    </div>
+    <div id="studentView">
+      <p style="font-size:.9em;color:var(--gray);line-height:1.6" data-i18n="studentHint">
+        The teacher view shows flagged answers only. When confidence is low, the AI asks the teacher to verify — one click to accept, edit or reject.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <span class="demo-tag" data-i18n="footTag">CONCEPT DEMO — NO REAL AI PROCESSING</span><br>
+    <span data-i18n="footLine">Sample questions from the NSW HSC Enterprise Computing syllabus (illustrative only).</span>
+  </footer>
+</div>
+
+<script>
+/* ============ i18n ============ */
+const I18N = {
+  en: {
+    brand: "CoachAI", demoTag: "CONCEPT DEMO",
+    hero1: "Your answer, marked against the",
+    hero2: "official HSC rubric",
+    heroSub: "Type or photograph your answer. CoachAI marks it, shows confidence, and coaches you to the next band.",
+    qTitle: "Choose a question", inTitle: "Submit your answer",
+    tabText: "Type", tabPhoto: "Photo of handwritten answer",
+    answerPh: "Type your answer here...",
+    dzText: "Tap to upload a photo of your answer",
+    dzNote: "Vision mode (demo) — photo is scanned and read like text",
+    markBtn: "Mark my answer",
+    vStudent: "Student view", vTeacher: "Teacher review",
+    studentHint: "The teacher view shows flagged answers only. When confidence is low, the AI asks the teacher to verify — one click to accept, edit or reject.",
+    emptyReview: "No flagged answers — all clear! 🎉",
+    footTag: "CONCEPT DEMO — NO REAL AI PROCESSING",
+    footLine: "Sample questions from the NSW HSC Enterprise Computing syllabus (illustrative only).",
+    s1: "Reading answer...",
+    s2: "Extracting key points (OCR / text analysis)",
+    s3: "Retrieving official marking guidelines (RAG)",
+    s4: "Marking against rubric bands...",
+    s5: "Second-pass verification (independent AI check)",
+    s6: "Writing personalised feedback",
+    confHigh: "High confidence", confMedium: "Medium confidence", confLow: "Low confidence",
+    flagTeacher: "Flagged for teacher review",
+    fbHead: "Feedback", practiceLabel: "Suggested practice",
+    needQ: "Please choose a question first.", needA: "Please enter or upload your answer first.",
+    scoreLabel: "out of", marksShort: "marks",
+    accept: "Accept", edit: "Edit", reject: "Reject", accepted: "✓ Accepted", edited: "✎ Edited", rejected: "✕ Rejected",
+    pending: "Pending review",
+    aiMark: "AI mark", reviewed: "Teacher", flagLow: "Low confidence",
+    progressTitle: "Marking in progress..."
+  },
+  zh: {
+    brand: "智能教练", demoTag: "概念演示",
+    hero1: "你的答案，对照",
+    hero2: "HSC 官方评分标准批改",
+    heroSub: "输入文字或拍照上传答案，AI 打分、给置信度，并针对性辅导你冲下一档。",
+    qTitle: "第一步：选择题目", inTitle: "第二步：提交你的答案",
+    tabText: "打字输入", tabPhoto: "拍照上传手写答案",
+    answerPh: "在这里输入你的答案...",
+    dzText: "点击上传答案照片",
+    dzNote: "视觉模式（演示）— 照片将被扫描并当作文字读取",
+    markBtn: "批改我的答案",
+    vStudent: "学生视角", vTeacher: "老师复核",
+    studentHint: "老师视角只显示被标记的答案。当 AI 置信度低时，会请老师复核——一键接受、修改或驳回。",
+    emptyReview: "没有被标记的答案 — 全部通过！🎉",
+    footTag: "概念演示 — 无真实 AI 处理",
+    footLine: "示例题目取自 NSW HSC Enterprise Computing 大纲（仅作示意）。",
+    s1: "读取答案中...",
+    s2: "提取要点（OCR / 文本分析）",
+    s3: "检索官方评分标准（RAG）",
+    s4: "按评分档位批改中...",
+    s5: "第二遍独立复核中（第二个 AI）",
+    s6: "生成个性化反馈",
+    confHigh: "高置信度", confMedium: "中置信度", confLow: "低置信度",
+    flagTeacher: "已标记，等待老师复核",
+    fbHead: "反馈", practiceLabel: "建议练习",
+    needQ: "请先选择一道题目。", needA: "请先输入或上传答案。",
+    scoreLabel: "满分", marksShort: "分",
+    accept: "接受", edit: "修改", reject: "驳回", accepted: "✓ 已接受", edited: "✎ 已修改", rejected: "✕ 已驳回",
+    pending: "待复核",
+    aiMark: "AI 评分", reviewed: "老师", flagLow: "低置信度",
+    progressTitle: "批改进度..."
+  }
+};
+let LANG = 'en';
+function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (key === 'brand' || key === 'demoTag' || key === 'hero1' || key === 'hero2' ||
+        key === 'heroSub' || key === 'qTitle' || key === 'inTitle' || key === 'tabText' ||
+        key === 'tabPhoto' || key === 'dzText' || key === 'dzNote' || key === 'markBtn' ||
+        key === 'vStudent' || key === 'vTeacher' || key === 'studentHint' || key === 'emptyReview' ||
+        key === 'footTag' || key === 'footLine') {
+      el.textContent = t(key);
+    }
+  });
+  document.getElementById('answerText').setAttribute('placeholder', t('answerPh'));
+  document.getElementById('langBtn').textContent = LANG === 'en' ? '中文' : 'English';
+}
+function toggleLang() {
+  LANG = LANG === 'en' ? 'zh' : 'en';
+  try { localStorage.setItem('coachai-lang', LANG); } catch(e) {}
+  applyI18n();
+  renderQuestions();
+  renderReview();
+  const r = document.getElementById('resultCard');
+  if (r.innerHTML.trim() !== '') renderResult(lastResult);
+}
+
+/* ============ Data ============ */
+const QUESTIONS = [
+  { id: 0, textEn: "Explain TWO benefits of cloud computing for a small business.", marks: 4, textZh: "解释云计算对小型企业的两个好处。" },
+  { id: 1, textEn: "Identify TWO security risks of BYOD (Bring Your Own Device) policies in schools.", marks: 2, textZh: "指出学校 BYOD（自带设备）政策的两个安全风险。" },
+  { id: 2, textEn: "Describe ONE strategy a business can use to protect customer data.", marks: 3, textZh: "描述企业保护客户数据的一种策略。" }
+];
+
+const RESULTS = [
+  {
+    score: 3, max: 4, conf: "high",
+    feedback: [
+      { type: "good", textEn: "Correctly identified scalability and cost savings — both valid benefits.", textZh: "正确指出了可扩展性和成本节省——两个好处都答对了。" },
+      { type: "improve", textEn: "Band 3-4 asks for a 'business impact' link. Add one sentence on how this helps the business compete.", textZh: "3-4 档要求联系“商业影响”。加一句说明这如何帮助企业提升竞争力。" },
+      { type: "rule", textEn: "Rubric note: 'explain' requires a reason + effect, not just a definition.", textZh: "评分标准提示：“解释”需要原因+影响，不能只写定义。" }
+    ],
+    practice: { textEn: "Explain how cloud computing affects the cash flow of a small business.", textZh: "解释云计算如何影响小型企业的现金流。" }
+  },
+  {
+    score: 1, max: 4, conf: "low",
+    feedback: [
+      { type: "improve", textEn: "Only one benefit identified, with no explanation of HOW it works.", textZh: "只识别出一个好处，且没有解释其运作方式。" },
+      { type: "rule", textEn: "The rubric awards 2 marks per benefit: 1 for naming, 1 for explaining.", textZh: "评分标准每个好处给 2 分：1 分命名，1 分解释。" }
+    ],
+    practice: { textEn: "List TWO benefits of cloud computing and explain each in one sentence.", textZh: "列出云计算的两个好处，并各用一句话解释。" }
+  },
+  {
+    score: 2, max: 2, conf: "medium",
+    feedback: [
+      { type: "good", textEn: "Both risks named correctly (data theft and unauthorised access).", textZh: "两个风险都命名正确（数据盗窃和未授权访问）。" },
+      { type: "rule", textEn: "Full marks. Add real-world examples in future answers to push into Band 5-6.", textZh: "满分。以后答案加入真实案例可冲击 5-6 档。" }
+    ],
+    practice: { textEn: "Explain how a school can mitigate the data-theft risk of BYOD.", textZh: "解释学校如何降低 BYOD 的数据盗窃风险。" }
+  }
+];
+
+const REVIEW_ITEMS = [
+  { id: 1, student: "A. Patel", q: "Q1 — Cloud computing", score: "1/4", conf: "low", status: "pending" },
+  { id: 2, student: "M. Chen", q: "Q2 — BYOD risks", score: "2/2", conf: "high", status: "pending" },
+  { id: 3, student: "J. Smith", q: "Q3 — Customer data", score: "2/3", conf: "medium", status: "pending" }
+];
+
+let selectedQ = null;
+let photoFile = null;
+let lastResult = null;
+let marking = false;
+
+/* ============ Questions ============ */
+function renderQuestions() {
+  const list = document.getElementById('qList');
+  list.innerHTML = '';
+  QUESTIONS.forEach(q => {
+    const d = document.createElement('div');
+    d.className = 'q-chip' + (selectedQ === q.id ? ' selected' : '');
+    const text = LANG === 'en' ? q.textEn : q.textZh;
+    d.innerHTML = '<span>' + text + '</span><span class="marks">' + q.marks + ' ' + t('marksShort') + '</span>';
+    d.onclick = () => { selectedQ = q.id; renderQuestions(); };
+    list.appendChild(d);
+  });
+}
+
+/* ============ Input ============ */
+function switchInput(mode) {
+  document.getElementById('tabText').classList.toggle('active', mode === 'text');
+  document.getElementById('tabPhoto').classList.toggle('active', mode === 'photo');
+  document.getElementById('textMode').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('photoMode').style.display = mode === 'photo' ? 'block' : 'none';
+}
+function handleFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  photoFile = f;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('photoPreview').innerHTML =
+      '<img src="' + e.target.result + '" alt="uploaded answer photo">';
+  };
+  reader.readAsDataURL(f);
+}
+
+/* ============ Marking (simulated) ============ */
+const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5", "s6"];
+function markAnswer() {
+  if (marking) return;
+  if (selectedQ === null) { alert(t('needQ')); return; }
+  const text = document.getElementById('answerText').value.trim();
+  const photo = photoFile !== null;
+  if (!text && !photo) { alert(t('needA')); return; }
+
+  marking = true;
+  document.getElementById('markBtn').disabled = true;
+  document.getElementById('resultPanel').style.display = 'none';
+  const stepsBox = document.getElementById('steps');
+  stepsBox.style.display = 'block';
+  stepsBox.innerHTML = '<div class="step wait">' + t('progressTitle') + '</div>';
+
+  let i = 0;
+  const timers = [];
+  function nextStep() {
+    if (i >= STEP_KEYS.length) {
+      const done = document.createElement('div');
+      done.className = 'step done';
+      done.textContent = t('s6');
+      stepsBox.appendChild(done);
+      setTimeout(() => {
+        stepsBox.style.display = 'none';
+        showResult();
+        marking = false;
+        document.getElementById('markBtn').disabled = false;
+      }, 450);
+      return;
+    }
+    const s = document.createElement('div');
+    s.className = 'step show wait';
+    s.textContent = t(STEP_KEYS[i]);
+    stepsBox.appendChild(s);
+    i++;
+    setTimeout(() => { s.classList.remove('wait'); s.classList.add('done'); nextStep(); }, 620);
+  }
+  nextStep();
+}
+
+/* ============ Result ============ */
+function showResult() {
+  // pick result by question: use question id to vary
+  const pool = RESULTS;
+  const r = pool[(selectedQ + (photoFile ? 1 : 0)) % pool.length];
+  lastResult = r;
+  renderResult(r);
+}
+function renderResult(r) {
+  const panel = document.getElementById('resultPanel');
+  panel.style.display = 'block';
+  const confKey = r.conf === 'high' ? 'confHigh' : (r.conf === 'medium' ? 'confMedium' : 'confLow');
+  const confBadge = '<span class="badge ' + r.conf + '">' + t(confKey) + '</span>';
+  const flagBadge = r.conf === 'low' ? '<span class="badge flag">' + t('flagTeacher') + '</span>' : '';
+  const fbItems = r.feedback.map(f => {
+    const txt = LANG === 'en' ? f.textEn : f.textZh;
+    return '<div class="fb-item ' + f.type + '"><span class="dot"></span><span>' + txt + '</span></div>';
+  }).join('');
+  const practice = LANG === 'en' ? r.practice.textEn : r.practice.textZh;
+  const q = QUESTIONS[selectedQ];
+  const qText = LANG === 'en' ? q.textEn : q.textZh;
+
+  document.getElementById('resultCard').innerHTML =
+    '<div class="result-top">' +
+      '<div class="score">' + r.score + '<span class="max"> / ' + r.max + '</span></div>' +
+      '<div class="badges">' + confBadge + flagBadge + '</div>' +
+    '</div>' +
+    '<div class="result-sub">' + qText + '</div>' +
+    '<div class="fb-block"><div class="fb-head">' + t('fbHead') + '</div>' + fbItems + '</div>' +
+    '<div class="practice"><span class="p-label">🎯 ' + t('practiceLabel') + '</span>' + practice + '</div>';
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ============ Teacher view ============ */
+function switchView(view) {
+  document.getElementById('tabStudent').classList.toggle('active', view === 'student');
+  document.getElementById('tabTeacher').classList.toggle('active', view === 'teacher');
+  document.getElementById('studentView').style.display = view === 'student' ? 'block' : 'none';
+  document.getElementById('teacherView').style.display = view === 'teacher' ? 'block' : 'none';
+  if (view === 'teacher') renderReview();
+}
+function renderReview() {
+  const list = document.getElementById('reviewList');
+  const pending = REVIEW_ITEMS.filter(x => x.status === 'pending');
+  document.getElementById('emptyReview').style.display = pending.length === 0 ? 'block' : 'none';
+  list.innerHTML = '';
+  REVIEW_ITEMS.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'review-item' + (item.status !== 'pending' ? ' ' + item.status : '');
+    let statusText = '';
+    if (item.status === 'accepted') statusText = '<span class="status-text" style="color:var(--green)">' + t('accepted') + '</span>';
+    else if (item.status === 'edited') statusText = '<span class="status-text" style="color:#B26A00">' + t('edited') + '</span>';
+    else if (item.status === 'rejected') statusText = '<span class="status-text" style="color:var(--red)">' + t('rejected') + '</span>';
+    else statusText = '<span class="badge ' + item.conf + '">' + t('pending') + '</span>';
+
+    let actions = '';
+    if (item.status === 'pending') {
+      actions =
+        '<button class="r-btn accept" onclick="reviewAction(' + item.id + ',\'accepted\')">' + t('accept') + '</button>' +
+        '<button class="r-btn edit" onclick="reviewAction(' + item.id + ',\'edited\')">' + t('edit') + '</button>' +
+        '<button class="r-btn reject" onclick="reviewAction(' + item.id + ',\'rejected\')">' + t('reject') + '</button>';
+    } else {
+      actions = '<span class="status-text" style="color:var(--gray);font-size:.75em">' + t('reviewed') + '</span>';
+    }
+
+    el.innerHTML =
+      '<div class="r-info">' +
+        '<div class="r-name">' + item.student + ' — ' + item.q + '</div>' +
+        '<div class="r-meta">' + t('aiMark') + ': <strong>' + item.score + '</strong> · ' + (item.conf === 'low' ? t('flagLow') : '') + '</div>' +
+      '</div>' +
+      '<div class="r-score">' + item.score + '</div>' +
+      '<div class="r-actions">' + statusText + actions + '</div>';
+    list.appendChild(el);
+  });
+}
+function reviewAction(id, status) {
+  const item = REVIEW_ITEMS.find(x => x.id === id);
+  if (item) { item.status = status; renderReview(); }
+}
+
+/* ============ Init ============ */
+(function init() {
+  try {
+    const saved = localStorage.getItem('coachai-lang');
+    if (saved === 'zh') LANG = 'zh';
+  } catch(e) {}
+  applyI18n();
+  renderQuestions();
+  renderReview();
+})();
+</script>
+</body>
+</html>
