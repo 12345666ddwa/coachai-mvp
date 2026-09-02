@@ -5,13 +5,48 @@ from docx.shared import Pt, Cm, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn, nsdecls
-from docx.oxml import parse_xml
+from docx.oxml import parse_xml, OxmlElement
+from docx.opc.constants import RELATIONSHIP_TYPE
 
 HEADER_BG = "1F4E79"
 ALT_ROW = "F2F6FA"
 DARK_BLUE = RGBColor(0x1F, 0x4E, 0x79)
 GRAY = RGBColor(0x6B, 0x76, 0x84)
+LINK_BLUE = RGBColor(0x05, 0x63, 0xC1)
 FIG_DIR = "/home/gaogao/workspace/ai-coach/docs/figures"
+
+LIVE_AI_URL = "https://provincial-sticks-currency-eng.trycloudflare.com"
+CONCEPT_URL = "https://12345666ddwa.github.io/coachai-mvp/"
+REPO_URL = "https://github.com/12345666ddwa/coachai-mvp"
+
+def add_hyperlink(paragraph, url, text):
+    """Insert a real clickable hyperlink into a paragraph."""
+    part = paragraph.part
+    r_id = part.relate_to(url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+    new_run = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+    rFonts = OxmlElement("w:rFonts")
+    rFonts.set(qn("w:ascii"), "Calibri")
+    rFonts.set(qn("w:hAnsi"), "Calibri")
+    rPr.append(rFonts)
+    c = OxmlElement("w:color")
+    c.set(qn("w:val"), "0563C1")
+    rPr.append(c)
+    u = OxmlElement("w:u")
+    u.set(qn("w:val"), "single")
+    rPr.append(u)
+    sz = OxmlElement("w:sz")
+    sz.set(qn("w:val"), "22")
+    rPr.append(sz)
+    new_run.append(rPr)
+    t = OxmlElement("w:t")
+    t.text = text
+    new_run.append(t)
+    hyperlink.append(new_run)
+    paragraph._p.append(hyperlink)
+    return hyperlink
 
 def set_cell_shading(cell, color):
     cell._tc.get_or_add_tcPr().append(parse_xml(f'<w:shd {nsdecls("w")} w:fill="{color}"/>'))
@@ -128,6 +163,35 @@ for line in ["Project Progress & Technical Report", "", "Team iSoft AI Innovatio
     r.font.name = "Calibri"; r.font.size = Pt(12 if line and line[0].isalpha() else 11)
 doc.add_page_break()
 
+# ============ LIVE LINKS (page 2) ============
+h1(doc, "Try It Live")
+body(doc, "Two working demos accompany this report. Open them on any phone.")
+p = doc.add_paragraph()
+p.paragraph_format.space_after = Pt(2)
+r = p.add_run("1) Live AI marking demo (real engine, real answers): ")
+r.font.name = "Calibri"; r.font.size = Pt(11); r.bold = True
+add_hyperlink(p, LIVE_AI_URL, LIVE_AI_URL)
+body(doc, "This is the real pipeline: choose a 2025 HSC question, type or load a sample answer, and the "
+          "Marker + Verifier engine grades it against the official rubric (30-60 s per answer). "
+          "Note: it is served from the team laptop via a temporary tunnel, so it is online whenever the "
+          "laptop is running. If the link stops working, ask Xing to restart the tunnel.", size=Pt(10))
+p = doc.add_paragraph()
+p.paragraph_format.space_after = Pt(2)
+p.paragraph_format.space_before = Pt(10)
+r = p.add_run("2) Concept demo (static, always online): ")
+r.font.name = "Calibri"; r.font.size = Pt(11); r.bold = True
+add_hyperlink(p, CONCEPT_URL, CONCEPT_URL)
+body(doc, "The design mock-up of the intended user experience - no backend, instant, phone-friendly. "
+          "Good for showing the UX flow before touching the live engine.", size=Pt(10))
+p = doc.add_paragraph()
+p.paragraph_format.space_after = Pt(2)
+p.paragraph_format.space_before = Pt(10)
+r = p.add_run("3) Source code and this report: ")
+r.font.name = "Calibri"; r.font.size = Pt(11); r.bold = True
+add_hyperlink(p, REPO_URL, REPO_URL)
+body(doc, "Full repository (code, question bank, RAG index script, Golden Set, figures).", size=Pt(10))
+doc.add_page_break()
+
 # ============ 1. EXECUTIVE SUMMARY ============
 h1(doc, "1. Executive Summary")
 body(doc, "This report documents everything the team has produced since Xing joined: the architecture, "
@@ -140,7 +204,7 @@ create_table(doc, ["Asset", "Status", "Detail"], [
     ["RAG knowledge base", "Done", "4 official NESA Teacher Support Resources (Year 12 modules) indexed into Chroma: 1,046 chunks"],
     ["Marking engine", "Done", "LangGraph state machine: Marker Agent + Verifier Agent + RAG retrieval + confidence blending + retry loop"],
     ["Model abstraction", "Done", "One config line swaps the LLM provider (DeepSeek active now; Gemini free tier / local Ollama ready)"],
-    ["Frontend", "Done", "Gradio app (phone-friendly, EN/CN toggle), running locally on port 7860"],
+    ["Frontend", "Done", "Gradio app (phone-friendly, EN/CN toggle) with a live public demo link (Cloudflare Tunnel); see 'Try It Live' on the next page"],
     ["Verification", "Done", "Golden Set: 32 simulated answers (8 questions x 4 quality bands), expected marks from official rubric"],
     ["Verification result", "Measured", "32/32 graded within +/-1 band of the official rubric (100%); exact match 78.1%; zero wild misses"],
 ], col_widths=[4.0, 2.0, 10.0])
@@ -267,7 +331,7 @@ body(doc, "The demo concept page (ai-coach/demo/index.html) shows the intended U
 
 # ============ 9. NEXT ============
 h1(doc, "9. What Is Next")
-bullet(doc, "Deploy the Gradio app to Hugging Face Spaces for a public link the whole team (and judges) can open on a phone", bold_prefix="Public demo:")
+bullet(doc, "Live now via a Cloudflare Tunnel (see 'Try It Live'). Optional upgrade: a permanent host (e.g. HF Spaces PRO or Render) so the demo is online without the laptop", bold_prefix="Public demo:")
 bullet(doc, "Workflow 2 (report generation from spreadsheets) on the second graph slot in the architecture", bold_prefix="Report feedback:")
 bullet(doc, "Follow-up chat so a student can ask 'why did I lose the mark?' - the real-time coach experience", bold_prefix="Coaching chat:")
 bullet(doc, "Photo upload with DeepSeek's vision model (deepseek-v4-flash-vision-exp exists on our key) or a local vision model", bold_prefix="Handwritten answers:")

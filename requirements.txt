@@ -1,2 +1,6 @@
 openai>=1.40
 python-dotenv>=1.0
+langgraph>=1.2
+chromadb>=1.5
+gradio>=6.0
+sentence-transformers>=5.0
