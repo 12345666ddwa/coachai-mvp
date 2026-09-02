@@ -282,6 +282,65 @@ body(doc, "When the Verifier rejects a verdict, the critique is fed back to the 
           "round (max 2 rounds). If it still disagrees, the answer is flagged for a human teacher - no "
           "infinite loop, no wasted API budget.")
 
+h2(doc, "4.6 Model training data and fine-tuning (clarification)")
+body(doc, "Question from the team: what was the model trained on? Clear answer: we do NOT fine-tune or "
+          "train the model at all. The LLM is DeepSeek v4-flash, a general-purpose pretrained model - "
+          "it has never seen our question bank or the HSC materials during training (0 epochs of "
+          "fine-tuning, by design).")
+body(doc, "All HSC-specific knowledge enters the system at inference time through two channels:")
+bullet(doc, "The question bank (data/questions.json): 18 real 2025 HSC questions with their official "
+            "NESA marking guidelines, transcribed verbatim from the marking guidelines PDF", bold_prefix="1)")
+bullet(doc, "RAG retrieval: the 4 NESA Teacher Support Resources are indexed (1,046 chunks) and the "
+            "relevant chunks are injected into the Marker's prompt for each answer. (So the system "
+            "touches 5 official documents in total: the 4 TSRs plus the marking guidelines held in the "
+            "question bank.)", bold_prefix="2)")
+body(doc, "Why no fine-tuning in the MVP:")
+bullet(doc, "Published evidence: open-weight LLMs prompted with rubric criteria grade competitively "
+            "without fine-tuning (ACM 2025, Automatic Short Answer Grading with LLMs). Our own Golden "
+            "Set result (78.1% exact, 100% within +/-1 band, zero misses on 32 answers) confirms this "
+            "holds for our pipeline.", bold_prefix="Evidence:")
+bullet(doc, "RAG already gives the model the exact official wording it needs at marking time - "
+            "equivalent to 'looking up the syllabus' rather than memorising it.", bold_prefix="Coverage:")
+bullet(doc, "The team's own planning note said 'potentially we will not even need to do any fine "
+            "tuning and instead just the prompt' - we built exactly that and it works.", bold_prefix="Brief:")
+body(doc, "If we later need fine-tuning (e.g. to run offline without retrieval, or to push accuracy "
+          "higher), the 4 TSRs are the right training corpus - that is when 'fine-tuning on the 4 "
+          "teacher support resources' becomes true. It is deliberately not done yet.")
+
+h2(doc, "4.7 Fine-tuning roadmap: where it would sit, how, and what it buys us")
+body(doc, "If we fine-tune, nothing changes in the runtime graph. Fine-tuning is an offline step that "
+          "replaces the Marker's base model (and optionally the Verifier's). The model abstraction "
+          "layer (agents/models.py) was designed for exactly this: after fine-tuning, pointing the "
+          "Marker at a local fine-tuned model is a configuration change - zero pipeline edits.")
+body(doc, "The sequence we would follow:")
+bullet(doc, "Grow the Golden Set from 32 to roughly 300 labelled (answer, score, feedback) triples - "
+            "AI-assisted first pass, human review. The existing 32 answers stay reserved as a held-out "
+            "test set; they are never used for training (that would leak the evaluation).", bold_prefix="1. Data first:")
+bullet(doc, "LoRA / QLoRA parameter-efficient fine-tuning on a small open-weight base (Qwen3-4B "
+            "class). Not full fine-tuning - cheaper and easier to keep under control.", bold_prefix="2. Method:")
+bullet(doc, "Output the same strict JSON contract (marks, justification, feedback) aligned with NESA "
+            "rubric language, with the 4 TSRs as background corpus so the model internalises syllabus "
+            "terms. This is the step where 'fine-tuning on the 4 TSRs' genuinely happens.", bold_prefix="3. Objective:")
+bullet(doc, "Re-run the same Golden Set regression. Acceptance criteria: accuracy no worse than today "
+            "(78.1% exact, 100% within +/-1 band) AND latency/cost clearly better. Only then do we swap "
+            "the provider.", bold_prefix="4. Evaluation gate:")
+bullet(doc, "Marker runs on the fine-tuned local model (Ollama / vLLM); RAG stays (official wording is "
+            "still injected); the Verifier remains on the stronger cloud model as the independent "
+            "auditor. Division of labour: a fast local Marker, a sceptical cloud Verifier.", bold_prefix="5. Rollout:")
+body(doc, "What fine-tuning would buy us: near-zero marginal cost per marking (local inference); "
+          "latency from 30-70 s down to seconds on a laptop GPU; true offline capability (the complete "
+          "'runs on a device' story for the pitch and for schools with no reliable internet); student "
+          "answers never leaving the device (a real selling point for schools); and no API rate limits "
+          "or output truncation failures.")
+body(doc, "The costs and risks: roughly 300 quality labels require human time; small models have a "
+          "ceiling on long, subtle answers (which is why the Verifier stays on the big model); "
+          "overfitting is mitigated by the held-out test set and LoRA.")
+body(doc, "Timing: after the competition core is stable - not before the deadline with 32 samples. If "
+          "a judge asks whether we fine-tuned: 'The MVP does not need it - published evidence and our "
+          "own 32-answer regression show rubric-conditioned prompting with RAG is sufficient. We have "
+          "a concrete roadmap to add fine-tuning for offline deployment, with the 4 TSRs as the "
+          "training corpus.'")
+
 # ============ 5. VERIFICATION ============
 h1(doc, "5. How We Verified (Methodology)")
 body(doc, "To measure quality honestly we built a Golden Set - the same pattern used in academic grading "
@@ -322,6 +381,7 @@ create_table(doc, ["Issue", "Root cause", "Fix"], [
     ["Model name 'deepseek-chat' failed", "DeepSeek API serves model ids deepseek-v4-flash / deepseek-v4-pro", "Default model corrected to deepseek-v4-flash (verified via /models endpoint)"],
     ["No PDF past papers exist for this subject", "Enterprise Computing is examined fully online; 2025 was its first HSC year", "Question stems captured from the official online exam system (fam.hsconline.nesa.nsw.edu.au); marking guidelines PDF downloaded from nsw.gov.au"],
     ["Slow per-answer latency (30-70 s)", "Each answer costs 2-4 LLM calls on DeepSeek", "In-memory cache keyed on question + answer prefix; demo flow reuses cached results"],
+    ["Team UI feedback: full question was not visible; interface felt less professional (emoji, round cards)", "Question text truncated to 78 chars in the picker; playful styling", "Full question preview panel added under the picker; emoji removed; corners squared; layout widened (1180 px) with more white space"],
 ], col_widths=[5.0, 5.5, 5.5])
 
 # ============ 8. HOW TO RUN ============
@@ -336,6 +396,7 @@ bullet(doc, "Workflow 2 (report generation from spreadsheets) on the second grap
 bullet(doc, "Follow-up chat so a student can ask 'why did I lose the mark?' - the real-time coach experience", bold_prefix="Coaching chat:")
 bullet(doc, "Photo upload with DeepSeek's vision model (deepseek-v4-flash-vision-exp exists on our key) or a local vision model", bold_prefix="Handwritten answers:")
 bullet(doc, "Gemini free tier / local Ollama swap to tell the open-weight story in the pitch", bold_prefix="Model swap demo:")
+bullet(doc, "Roadmap in section 4.7: grow the Golden Set to ~300 labels, LoRA-fine-tune a small open-weight Marker, keep the cloud Verifier as auditor, and run fully offline", bold_prefix="Fine-tuning:")
 
 # ============ APPENDIX ============
 h1(doc, "Appendix A - Data Sources")

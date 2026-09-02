@@ -36,6 +36,7 @@ I18N = {
         "title": "CoachAI — HSC Enterprise Computing 智能批改",
         "subtitle": "选一道题，写下你的答案，AI 按官方评分标准即时批改",
         "q_label": "选择题目",
+        "q_meta": "题目",
         "q_ph": "从题库选择一道题…",
         "ans_label": "你的答案",
         "ans_ph": "在此输入 / 粘贴你的答案…",
@@ -45,23 +46,23 @@ I18N = {
         "no_ex": "该题没有可用的{kind}示例，请手动输入答案。",
         "no_ex_good": "好",
         "no_ex_bad": "差",
-        "mark_btn": "🚀 开始批改",
+        "mark_btn": "开始批改",
         "marking": "AI 正在批改…",
-        "err_empty": "⚠️ 请先选择题目并输入答案，再开始批改。",
-        "err_backend": "⚠️ 批改引擎尚未就绪：无法导入 `graphs.mark_graph`。",
+        "err_empty": "请先选择题目并输入答案，再开始批改。",
+        "err_backend": "批改引擎尚未就绪：无法导入 graphs.mark_graph。",
         "err_backend_hint": "请先在后端实现 `mark_answer(question_id, student_answer)`（见 app.py 头部约定），或确认运行目录为项目根。",
-        "err_unknown": "⚠️ 批改服务返回异常：",
+        "err_unknown": "批改服务返回异常：",
         "res_title": "批改结果",
-        "status_approved": "✅ 已批改",
-        "status_flagged": "🚩 需人工复核",
-        "status_error": "❌ 批改出错",
+        "status_approved": "已批改",
+        "status_flagged": "需人工复核",
+        "status_error": "批改出错",
         "conf": "置信度",
         "attempts": "答题次数",
-        "fb_good": "✅ 优点",
-        "fb_improve": "💡 改进建议",
-        "fb_rule": "📌 规则提示",
-        "fb_other": "📝 反馈",
-        "flags_head": "🚩 疑点标记",
+        "fb_good": "优点",
+        "fb_improve": "改进建议",
+        "fb_rule": "规则提示",
+        "fb_other": "反馈",
+        "flags_head": "疑点标记",
         "just_head": "批改说明",
         "raw_label": "原始返回（JSON）",
         "marks_unit": "分",
@@ -73,6 +74,7 @@ I18N = {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
         "subtitle": "Pick a question, write your answer, get instant AI feedback against official criteria",
         "q_label": "Select question",
+        "q_meta": "Question",
         "q_ph": "Pick a question from the bank…",
         "ans_label": "Your answer",
         "ans_ph": "Type / paste your answer here…",
@@ -82,23 +84,23 @@ I18N = {
         "no_ex": "No {kind} example available for this question — please type your own answer.",
         "no_ex_good": "good",
         "no_ex_bad": "bad",
-        "mark_btn": "🚀 Mark my answer",
+        "mark_btn": "Mark my answer",
         "marking": "AI is marking…",
-        "err_empty": "⚠️ Please select a question and enter an answer first.",
-        "err_backend": "⚠️ Marking engine not ready: cannot import `graphs.mark_graph`.",
+        "err_empty": "Please select a question and enter an answer first.",
+        "err_backend": "Marking engine not ready: cannot import graphs.mark_graph.",
         "err_backend_hint": "Implement `mark_answer(question_id, student_answer)` in the backend (contract in app.py header), or run from the project root.",
-        "err_unknown": "⚠️ Marking service returned an error:",
+        "err_unknown": "Marking service returned an error:",
         "res_title": "Marking result",
-        "status_approved": "✅ Approved",
-        "status_flagged": "🚩 Flagged for review",
-        "status_error": "❌ Marking failed",
+        "status_approved": "Approved",
+        "status_flagged": "Flagged for review",
+        "status_error": "Marking failed",
         "conf": "Confidence",
         "attempts": "Attempts",
-        "fb_good": "✅ Strengths",
-        "fb_improve": "💡 To improve",
-        "fb_rule": "📌 Marking rule",
-        "fb_other": "📝 Feedback",
-        "flags_head": "🚩 Flags",
+        "fb_good": "Strengths",
+        "fb_improve": "To improve",
+        "fb_rule": "Marking rule",
+        "fb_other": "Feedback",
+        "flags_head": "Flags",
         "just_head": "Justification",
         "raw_label": "Raw response (JSON)",
         "marks_unit": "",
@@ -214,6 +216,19 @@ def question_text(qid: str) -> str:
             return q.get("text", qid)
     return qid
 
+
+def q_preview_md(qid: str, lang: str) -> str:
+    """Full question text + marks, rendered above the answer box."""
+    L = I18N.get(lang, I18N["en"])
+    for q in load_questions():
+        if q.get("id") == qid:
+            marks = q.get("marks", "?")
+            suffix = L["q_marks_suffix"]
+            head = L.get("q_meta", "Question")
+            return (f'<div class="q-meta">{head} · {marks} {suffix}</div>'
+                    f'{str(q.get("text", "")).replace(chr(10), "<br>")}')
+    return qid
+
 # ---------------------------------------------------------------- 渲染
 def render_result_html(res: dict, qid: str, lang: str) -> str:
     """把 mark_answer 返回 dict 渲染成卡片 HTML（内联样式，无需外部 CSS）。"""
@@ -231,12 +246,12 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
     bg, _soft, border = STATUS_STYLE.get(status, STATUS_STYLE["error"])
     stat_txt = L.get(f"status_{status}", status)
 
-    h = ['<div style="background:#fff;border:1.5px solid #E3E7EC;border-radius:16px;'
+    h = ['<div style="background:#fff;border:1.5px solid #E3E7EC;border-radius:6px;'
          'padding:20px;box-shadow:0 2px 12px rgba(26,35,50,.08);font-family:Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">']
 
     if status == "error":
         msg = (res.get("message") or res.get("error") or "unknown error")
-        h.append(f'<div style="color:#C62828;font-weight:700;font-size:1.1em">❌ {msg}</div>'
+        h.append(f'<div style="color:#C62828;font-weight:700;font-size:1.1em">{msg}</div>'
                  f'<div style="color:#6B7684;font-size:.9em;margin-top:6px">status=error · {qid}</div>')
         h.append("</div>")
         return "".join(h)
@@ -253,7 +268,7 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
     conf_pct = res.get("confidence_pct")
     conf_txt = f'{L["conf"]} {conf_pct}%' if conf_pct is not None else L["conf"]
     badges.append(f'<span style="border:1.5px solid {c_conf};color:{c_conf};background:#fff;'
-                  f'border-radius:20px;padding:4px 12px;font-size:.78em;font-weight:700">{conf_txt}</span>')
+                  f'border-radius:4px;padding:5px 12px;font-size:.78em;font-weight:700">{conf_txt}</span>')
     attempts = res.get("attempts")
     if attempts is not None:
         badges.append(f'<span style="border:1.5px solid #6B7684;color:#6B7684;border-radius:20px;'
@@ -263,7 +278,7 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
 
     # 状态横幅
     h.append(f'<div style="margin-top:12px;background:{bg}1A;border:1.5px solid {border};color:{bg};'
-             f'border-radius:10px;padding:8px 14px;font-weight:700;font-size:.9em">{stat_txt}</div>')
+             f'border-radius:4px;padding:8px 14px;font-weight:700;font-size:.9em">{stat_txt}</div>')
 
     # 逐条反馈
     fb = res.get("feedback") or []
@@ -274,7 +289,7 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
         color, soft = FB_TYPE.get(ftype, ("#6B7684", "#F4F6F8"))
         head = L.get(f"fb_{ftype}", L["fb_other"])
         h.append(f'<div style="margin-top:10px;background:{soft};border-left:4px solid {color};'
-                 f'border-radius:8px;padding:10px 14px;font-size:.92em;line-height:1.55">'
+                 f'border-radius:4px;padding:10px 14px;font-size:.92em;line-height:1.55">'
                  f'<span style="font-weight:700;color:{color}">{head}</span><br>{item.get("text", "")}</div>')
 
     # flags
@@ -295,7 +310,7 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
 
 
 def err_card(title: str, hint: str = "") -> str:
-    return (f'<div style="background:#FBEAEA;border:1.5px solid #C62828;border-radius:12px;padding:14px 16px;'
+    return (f'<div style="background:#FBEAEA;border:1.5px solid #C62828;border-radius:6px;padding:14px 16px;'
             f'font-family:Segoe UI,PingFang SC,Microsoft YaHei,sans-serif">'
             f'<div style="color:#C62828;font-weight:700">{title}</div>'
             + (f'<div style="color:#6B7684;font-size:.88em;margin-top:6px">{hint}</div>' if hint else "") + "</div>")
@@ -330,26 +345,29 @@ PAGE_CSS = """
 :root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#16395c;
         --orange:#E69F00; --line:#E3E7EC; --card:#FFFFFF; }
 body, .gradio-container { background: var(--paper) !important; color: var(--ink); }
-.gradio-container { max-width: 900px !important; margin: 0 auto !important;
+.gradio-container { max-width: 1180px !important; margin: 0 auto !important;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                                  "PingFang SC", "Microsoft YaHei", sans-serif !important; }
-#coach-header { background: var(--card); border:1px solid var(--line); border-radius:16px;
-                box-shadow: 0 2px 12px rgba(26,35,50,.08); padding: 20px 24px; margin-top: 14px; }
+#coach-header { background: var(--card); border:1px solid var(--line); border-radius:6px;
+                box-shadow: 0 1px 8px rgba(26,35,50,.06); padding: 28px 32px; margin-top: 24px; }
 #coach-header .logo { display:inline-flex; align-items:center; gap:10px; font-weight:800; font-size:1.25em; color:var(--ink); }
-#coach-header .logo .mark { background:var(--blue); color:#fff; border-radius:9px; width:34px; height:34px;
-                            display:inline-flex; align-items:center; justify-content:center; font-size:.9em; }
+#coach-header .logo .mark { background:var(--blue); color:#fff; border-radius:6px; width:38px; height:38px;
+                            display:inline-flex; align-items:center; justify-content:center; font-size:.85em; font-weight:800; letter-spacing:.5px; }
 #coach-header .sub { color:#6B7684; font-size:.92em; margin-top:4px; }
 #lang-switch button { border-radius: 20px !important; font-weight:600 !important; }
 #lang-switch .selected { background: var(--blue) !important; border-color: var(--blue) !important; color:#fff !important; }
 #lang-switch button:not(.selected) { background:var(--card) !important; color:var(--ink) !important;
                                      border:1px solid var(--line) !important; }
-.panel { background: var(--card); border:1px solid var(--line); border-radius:16px;
-         box-shadow: 0 2px 12px rgba(26,35,50,.08); padding: 16px 18px; }
-#mark-btn { background: var(--blue) !important; border: none !important; border-radius: 30px !important;
-            font-weight:700 !important; padding: 12px 44px !important; font-size:1.02em !important; }
+.panel { background: var(--card); border:1px solid var(--line); border-radius:6px;
+         box-shadow: 0 1px 8px rgba(26,35,50,.05); padding: 26px 30px; }
+#mark-btn { background: var(--blue) !important; border: none !important; border-radius: 6px !important;
+            font-weight:700 !important; padding: 14px 52px !important; font-size:1.05em !important; }
 #mark-btn:hover { background: var(--blue-hover) !important; box-shadow: 0 6px 18px rgba(31,78,121,.3) !important; }
 #mark-btn:disabled { opacity:.45; }
 textarea:focus, input:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 1px var(--blue) !important; }
+#q-preview { background:#F7F9FB; border:1px solid var(--line); border-radius:6px; padding:16px 18px;
+                  line-height:1.65; font-size:.95em; color:#33404F; margin-top:2px; }
+#q-preview .q-meta { color:#6B7684; font-size:.78em; font-weight:700; letter-spacing:.4px; text-transform:uppercase; margin-bottom:6px; }
 footer { display: none !important; }
 @media (max-width: 640px) {
   .gradio-container { max-width: 100% !important; padding: 0 6px !important; }
@@ -368,9 +386,9 @@ def build_ui() -> gr.Blocks:
         with gr.Row(elem_id="coach-header"):
             with gr.Column(scale=4):
                 title_md = gr.Markdown(
-                    f'<div class="logo"><span class="mark">🎓</span> CoachAI '
+                    f'<div class="logo"><span class="mark">AI</span> CoachAI '
                     f'<span style="color:#E69F00;font-size:.62em;font-weight:700;border:1.5px solid #E69F00;'
-                    f'border-radius:20px;padding:2px 8px;vertical-align:middle">HSC</span></div>'
+                    f'border-radius:4px;padding:2px 8px;vertical-align:middle">HSC</span></div>'
                     f'<div class="sub">{I18N["zh"]["subtitle"]}</div>')
             with gr.Column(scale=1, elem_id="lang-switch"):
                 lang_radio = gr.Radio(["中文", "EN"], value="中文", show_label=False,
@@ -380,7 +398,7 @@ def build_ui() -> gr.Blocks:
         with gr.Group(elem_classes="panel"):
             q_dropdown = gr.Dropdown(choices=q_choices(questions, "zh"), value=questions[0]["id"] if questions else None,
                                      label=I18N["zh"]["q_label"], elem_id="q-drop")
-            q_preview = gr.Markdown("", visible=False)
+            q_preview = gr.Markdown(q_preview_md(questions[0]["id"], "zh") if questions else "", elem_id="q-preview")
 
         # ---------- 2. 答案 ----------
         with gr.Group(elem_classes="panel"):
@@ -407,18 +425,24 @@ def build_ui() -> gr.Blocks:
                 ex_radio: gr.update(choices=[L["ex_good"], L["ex_bad"]], label=L["ex_label"]),
                 mark_btn: gr.update(value=L["mark_btn"]),
                 raw_accord: gr.update(label=L["raw_label"]),
-                title_md: gr.update(value=f'<div class="logo"><span class="mark">🎓</span> CoachAI '
+                q_preview: gr.update(value=q_preview_md(cur_qid, lang)),
+                title_md: gr.update(value=f'<div class="logo"><span class="mark">AI</span> CoachAI '
                                           f'<span style="color:#E69F00;font-size:.62em;font-weight:700;border:1.5px solid #E69F00;'
-                                          f'border-radius:20px;padding:2px 8px;vertical-align:middle">HSC</span></div>'
+                                          f'border-radius:4px;padding:2px 8px;vertical-align:middle">HSC</span></div>'
                                           f'<div class="sub">{L["subtitle"]}</div>'),
             }
-            return [lang, *[updates[c] for c in (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, title_md)]]
+            return [lang, *[updates[c] for c in (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md)]]
 
         lang_radio.change(fn=set_lang,
                           inputs=[lang_radio, qid_state],
-                          outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, title_md])
+                          outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md])
 
         # ---------- 示例答案填充 ----------
+        def on_q_change(qid, lang):
+            if not qid:
+                return qid, gr.update(value=qid), ""
+            return qid, gr.update(value=qid), q_preview_md(qid, lang)
+
         def fill_example(ex_choice, qid, lang):
             L = I18N[lang]
             if not ex_choice or not qid:
@@ -444,8 +468,8 @@ def build_ui() -> gr.Blocks:
         mark_btn.click(fn=on_mark, inputs=[qid_state, ans_box, lang_state],
                        outputs=[result_md, raw_json])
 
-        q_dropdown.change(fn=lambda qid: (qid, gr.update(value=qid)), inputs=[q_dropdown],
-                          outputs=[qid_state, q_dropdown])
+        q_dropdown.change(fn=on_q_change, inputs=[q_dropdown, lang_state],
+                          outputs=[qid_state, q_dropdown, q_preview])
 
     return demo
 
