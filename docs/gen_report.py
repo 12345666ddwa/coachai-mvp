@@ -15,7 +15,7 @@ GRAY = RGBColor(0x6B, 0x76, 0x84)
 LINK_BLUE = RGBColor(0x05, 0x63, 0xC1)
 FIG_DIR = "/home/gaogao/workspace/ai-coach/docs/figures"
 
-LIVE_AI_URL = "https://provincial-sticks-currency-eng.trycloudflare.com"
+LIVE_AI_URL = "https://pci-wav-hardwood-fix.trycloudflare.com"
 CONCEPT_URL = "https://12345666ddwa.github.io/coachai-mvp/"
 REPO_URL = "https://github.com/12345666ddwa/coachai-mvp"
 
