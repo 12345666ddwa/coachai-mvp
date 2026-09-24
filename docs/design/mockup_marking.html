@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marking Page · Design Mockup</title>
+<style>
+  /* ============================================================
+     Exam-paper design language
+     paper #FAFAF7 · ink #1A2332 · red pen #B03A2E · rule line #E2DED4
+     No gradients. No shadows. No emoji. No icons. Hard corners.
+     System font stack only. Full-width layout (no dead side space).
+     ============================================================ */
+  :root {
+    --paper: #FAFAF7;
+    --sheet: #FFFFFF;
+    --ink: #1A2332;
+    --ink-soft: #4A5568;
+    --ink-faint: #889298;
+    --red: #B03A2E;
+    --red-soft: #F7EBE9;
+    --rule: #E2DED4;
+    --rule-strong: #C9C4B8;
+    --green: #2F5D3A;
+    --amber: #8A5A00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- top bar: hairline, product + lang, mockup tag ---- */
+  .topbar {
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper);
+  }
+  .topbar-inner {
+    max-width: 1360px; margin: 0 auto;
+    padding: 18px 32px 16px;
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand-name { font-size: 1.18rem; font-weight: 700; letter-spacing: 0.01em; }
+  .brand-note { font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; }
+  .lang { font-size: 0.85rem; color: var(--ink-soft); }
+  .lang b { color: var(--ink); font-weight: 600; }
+  .lang span { padding: 0 7px; color: var(--rule-strong); }
+
+  .mockup-tag {
+    max-width: 1360px; margin: 0 auto; padding: 0 32px;
+  }
+  .mockup-tag p {
+    display: inline-block;
+    font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--red); border-bottom: 2px solid var(--red);
+    padding: 10px 0 4px; margin-bottom: 0;
+  }
+
+  /* ---- main grid: form left, results right, full width ---- */
+  .cols {
+    max-width: 1360px; margin: 0 auto;
+    padding: 26px 32px 64px;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 52px;
+    align-items: start;
+  }
+  @media (max-width: 980px) { .cols { grid-template-columns: 1fr; gap: 36px; } }
+
+  /* section label style: small caps + hairline, used everywhere */
+  .label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft);
+    padding-bottom: 8px; border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 18px;
+  }
+  .label .mark { color: var(--red); }
+
+  /* ---- question block: typeset like an exam paper ---- */
+  .qmeta {
+    font-size: 0.78rem; color: var(--ink-soft);
+    letter-spacing: 0.02em; margin-bottom: 10px;
+  }
+  .qmeta b { color: var(--ink); }
+  .qmeta .marks { color: var(--red); font-weight: 700; }
+  .qstem { font-size: 1.02rem; margin-bottom: 14px; }
+  .qstem table {
+    border-collapse: collapse; margin-top: 12px; font-size: 0.85rem;
+    border: 1px solid var(--rule-strong);
+  }
+  .qstem th, .qstem td {
+    border: 1px solid var(--rule); padding: 7px 12px; text-align: left;
+  }
+  .qstem th { background: #F4F2EC; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.03em; }
+  .qstem td { font-family: "SF Mono", Consolas, Menlo, monospace; font-size: 0.8rem; }
+  select.qpick {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--rule-strong);
+    background: var(--sheet); color: var(--ink); font: inherit; font-size: 0.92rem;
+    border-radius: 0; appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+                      linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+    background-size: 6px 6px; background-repeat: no-repeat;
+  }
+  select.qpick:focus { outline: none; border-color: var(--ink); }
+
+  .answer-zone { margin-top: 34px; }
+  textarea.answer {
+    width: 100%; min-height: 172px; resize: vertical;
+    border: 1px solid var(--rule-strong); background: var(--sheet);
+    padding: 14px 16px; font: inherit; font-size: 0.95rem; line-height: 1.65;
+    color: var(--ink); border-radius: 0;
+  }
+  textarea.answer:focus { outline: none; border-color: var(--ink); }
+  .answer-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px; font-size: 0.76rem; color: var(--ink-faint);
+  }
+
+  .btn-mark {
+    display: inline-block; border: 0; cursor: pointer;
+    background: var(--red); color: #fff;
+    font: inherit; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 13px 44px; border-radius: 0;
+  }
+  .btn-mark:hover { background: #98301f; }
+  .actions-row { margin-top: 22px; display: flex; align-items: center; gap: 22px; }
+  .privacy-note {
+    font-size: 0.78rem; color: var(--ink-soft);
+    border-left: 3px solid var(--green); padding-left: 11px; line-height: 1.5;
+  }
+  .privacy-note b { color: var(--green); }
+
+  /* ---- result column ---- */
+  .result-sheet {
+    background: var(--sheet);
+    border: 1px solid var(--rule-strong);
+    padding: 30px 30px 26px;
+  }
+  .score-row { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; }
+  .score-big {
+    font-size: 3.6rem; font-weight: 800; color: var(--red);
+    line-height: 1; letter-spacing: -0.02em;
+  }
+  .score-of { font-size: 1rem; color: var(--ink-soft); }
+  .score-caption { font-size: 0.76rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-top: 8px; }
+  .score-headline {
+    margin-top: 6px; font-size: 1.05rem; font-weight: 700;
+  }
+  .score-headline em { font-style: normal; color: var(--red); }
+
+  /* confidence ruler: tick scale, no ring, no bar-glow */
+  .conf { margin-top: 22px; }
+  .conf-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .conf-head .t { font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+  .conf-head .v { font-size: 0.95rem; font-weight: 700; }
+  .conf-head .v.lv-high { color: var(--green); }
+  .conf-ruler {
+    margin-top: 9px; height: 26px; position: relative;
+    border-bottom: 1px solid var(--ink);
+    background:
+      repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), var(--rule-strong) calc(10% - 1px), var(--rule-strong) 10%);
+    background-size: 100% 8px; background-position: bottom; background-repeat: no-repeat;
+  }
+  .conf-needle {
+    position: absolute; bottom: -1px; width: 2px; height: 20px; background: var(--red);
+  }
+  .conf-needle::after {
+    content: attr(data-pct); position: absolute; bottom: 22px; left: 50%;
+    transform: translateX(-50%); font-size: 0.74rem; font-weight: 700; color: var(--red);
+    white-space: nowrap;
+  }
+  .conf-scale { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.68rem; color: var(--ink-faint); }
+
+  .verdict-note {
+    margin-top: 20px; padding: 11px 14px;
+    border-left: 3px solid var(--green); background: #F0F4EF;
+    font-size: 0.84rem; color: #24422C;
+  }
+  .verdict-note.flag { border-left-color: var(--amber); background: #F8F3E6; color: #5C4200; }
+
+  /* feedback: annotation lines, like margin notes */
+  .fb-block { margin-top: 26px; }
+  .fb-item { display: flex; gap: 13px; margin-top: 13px; }
+  .fb-rule { width: 3px; background: var(--ink); flex: 0 0 3px; margin-top: 3px; }
+  .fb-item.good .fb-rule { background: var(--green); }
+  .fb-item.improve .fb-rule { background: var(--red); }
+  .fb-item.rule .fb-rule { background: var(--ink-soft); }
+  .fb-tag {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .fb-item.good .fb-tag { color: var(--green); }
+  .fb-item.improve .fb-tag { color: var(--red); }
+  .fb-item.rule .fb-tag { color: var(--ink-soft); }
+  .fb-text { font-size: 0.9rem; color: var(--ink); }
+  .fb-text .cite { color: var(--ink-faint); font-size: 0.82rem; }
+
+  .justify {
+    margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--rule-strong);
+    font-size: 0.82rem; color: var(--ink-soft);
+  }
+  .justify b { color: var(--ink-soft); letter-spacing: 0.08em; font-size: 0.7rem; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+  .result-empty {
+    background: var(--sheet); border: 1px dashed var(--rule-strong);
+    padding: 46px 30px; text-align: center; color: var(--ink-faint); font-size: 0.9rem;
+  }
+
+  footer.foot {
+    border-top: 1px solid var(--rule);
+    max-width: 1360px; margin: 0 auto; padding: 18px 32px 40px;
+    font-size: 0.74rem; color: var(--ink-faint);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-name">CoachAI</span>
+      <span class="brand-note">working name · rename in progress</span>
+    </div>
+    <div class="lang"><b>EN</b><span>·</span><a href="#" style="color:inherit;text-decoration:none;">中文</a></div>
+  </div>
+</div>
+
+<div class="mockup-tag">
+  <p>Design mockup v1 · marking page · exam-paper design language</p>
+</div>
+
+<main class="cols">
+
+  <!-- LEFT: question + answer input -->
+  <section>
+    <div class="label">1 · Question <span class="mark">/</span> 选题</div>
+
+    <select class="qpick">
+      <option>A company wants to analyse memes on social media to assess the effectiveness of its marketing campaign · [3 marks]</option>
+      <option>Which of the following is TRUE about forward chaining? · [2 marks]</option>
+    </select>
+
+    <div style="margin-top:22px;">
+      <div class="qmeta">
+        <b>Question 14</b> · Enterprise Computing · 2025 HSC paper · <span class="marks">[ 3 marks ]</span>
+      </div>
+      <div class="qstem">
+        A company wants to analyse memes on social media to assess the effectiveness of its marketing campaign.
+        Describe how the company could use memes as a data source to evaluate the campaign's reach and audience response.
+        <table>
+          <tr><th>Meme ID</th><th>Shares</th><th>Likes</th><th>Sentiment</th></tr>
+          <tr><td>M001</td><td>4,120</td><td>18,400</td><td>positive</td></tr>
+          <tr><td>M002</td><td>980</td><td>5,210</td><td>neutral</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="answer-zone">
+      <div class="label">2 · Student answer <span class="mark">/</span> 学生答案</div>
+      <textarea class="answer">The company can count the shares and likes to see how many people saw the campaign. They can also read the comments to understand how the audience felt about the brand and use data mining on the meme text to find common topics people talked about.</textarea>
+      <div class="answer-foot">
+        <span>48 words</span>
+        <span>Sample answer shown for layout purposes</span>
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-mark">Mark this answer</button>
+      <div class="privacy-note">
+        <b>Privacy:</b> names, emails and phone numbers are removed before the answer is sent to the AI.<br>
+        The model only ever sees the anonymised version.
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: result -->
+  <section>
+    <div class="label">3 · Result <span class="mark">/</span> 批改结果</div>
+
+    <div class="result-sheet">
+      <div class="score-row">
+        <div class="score-big">2<span style="font-size:1.6rem;font-weight:700;">/3</span></div>
+        <div>
+          <div class="score-caption">Suggested mark · teacher confirms</div>
+          <div class="score-headline">Solid answer. <em>One key idea is missing.</em></div>
+        </div>
+      </div>
+
+      <div class="conf">
+        <div class="conf-head">
+          <span class="t">AI confidence</span>
+          <span class="v lv-high">High · 88%</span>
+        </div>
+        <div class="conf-ruler"><div class="conf-needle" style="left: 88%;" data-pct="88"></div></div>
+        <div class="conf-scale"><span>low</span><span>medium</span><span>high</span></div>
+      </div>
+
+      <div class="verdict-note">
+        Approved by the verifier. Teacher review optional for this answer.
+      </div>
+
+      <div class="fb-block">
+        <div class="fb-item good">
+          <div class="fb-rule"></div>
+          <div>
+            <div class="fb-tag">What worked</div>
+            <div class="fb-text">Identified engagement metrics (shares, likes) and comments as sources of audience response, matching the scenario's data.</div>
+          </div>
+        </div>
+        <div class="fb-item improve">
+          <div class="fb-rule"></div>
+          <div>
+            <div class="fb-tag">To improve</div>
+            <div class="fb-text">The marking guideline also expects an evaluation method: how the company decides whether the campaign <em>worked</em>, not just what data to collect. Add one sentence linking metrics to a conclusion.</div>
+          </div>
+        </div>
+        <div class="fb-item rule">
+          <div class="fb-rule"></div>
+          <div>
+            <div class="fb-tag">Marking rule applied</div>
+            <div class="fb-text">Criteria reference: explains data collection <span class="cite">(1 mark)</span> · explains analysis <span class="cite">(1 mark)</span> · evaluates effectiveness <span class="cite">(not evidenced)</span>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="justify">
+        <b>Verifier justification</b>
+        Marks reflect the official 2025 HSC marking guidelines for this question. The evaluative criterion was checked twice: the answer describes use but not judgement.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <span>CoachAI marking page · mockup for team review (not the final build)</span>
+  <span>Paper · ink · red pen. No emoji, no gradients, no icon grids.</span>
+</footer>
+
+</body>
+</html>
