@@ -1,0 +1,121 @@
+MQ9 - iSoft AI Inn ovation
+
+Everyone’s Availability:
+
+Weekly meetings at 9ww level 1 at 5 pm Tuesday; everyone is available.
+
+EVERYONE CAN COMMENT FREELY & write in the scribble area
+
+Next steps & future plans
+
+Begin ideas with the tag [idea] e.g. “[idea] Use Microsoft PowerPoint through OneDrive “
+
+Make and organise this doc and various tabs/subtabs
+Email Ernest Lee: get a quote like: "I spend 15 hours a weekend marking short answers, which leaves me no time to actually plan interventions." Put that quote on your slide.
+Real student comments (Gowie + Shelley + Alfonso (especially relevant for enterprise computing))
+
+Roles
+
+Web Dev
+
+	
+
+Research
+
+	
+
+AI building
+
+	
+
+Presenting
+
+	
+
+Testing
+
+
+
+
+Shelley
+
+Happy
+
+Mehzrad
+
+	
+
+Gowie
+
+Kla
+
+Tuan
+
+	
+
+HappyAlfonso
+
+	
+
+Kla
+
+Alfonso
+
+Gowie
+
+Tuan [speech]
+
+	
+
+Ming
+
+Alfonso
+
+Other: Saadman, Tuan
+
+Team notes:
+
+Web Dev
+
+	
+
+Research
+
+	
+
+AI
+
+	
+
+Presenting
+
+	
+
+Testing
+
+
+
+
+Use UI library
+
+Don’t look AI-coded [remove emojis, no curved boxes, remove whitespace]
+
+	
+
+Find any source and statistic and use quotes
+
+	
+
+Add finetuning
+
+Needs to be anonymous since  its proprietary data [ok for demo but needs to be fully private] OR consider local anonymiser script
+
+	
+
+[In ‘Presenting’ tab]
+
+	
+
+Let me view the full question (text wrapping)
+
+Say suggested mark / draft evaluation instead of being confident

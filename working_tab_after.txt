@@ -1,0 +1,242 @@
+MQ9 - iSoft AI Inn ovation
+Chosen Idea:
+Concise Project Description/Name
+AI for engagement: real-time coach for enterprise computing from the NSW HSC syllabus
+
+Target Audience: teachers who need help marking [not hsc markers themselves]
+
+FOCUS AREA: NSW HSC COURSE ENTERPRISE COMPUTING
+
+Future applications: other qualitative subjects and sports for helping casual teachers
+
+Skeleton: give question & marking criteria [following a skeleton prompt/script] → agent trained on real teaching materials → mark and feedback
+
+Differentiator: proprietary data
+
+Ideas
+
+UI could be gamified to say you attack the problem well but defend it poorly
+
+Challenge + Research
+
+Research reports from NESA:
+
+https://www.nsw.gov.au/education-and-training/nesa/about/research/reports
+
+[Research why students often do not engage much]
+
+[Any research related to marking]
+
+Students don’t care (view doing well as unachievable) because they are confused →  helped by clear directions → helped by opportunities & growth → snowballing effect on your child’s development Student engagement and wellbeing in NSW students become disengaged in high school  and some feel anxious about their performance.
+
+“Students become less engaged in the middle year of secondary school (the ‘Year 9 dip’)”
+
+Students with low engagement are “more likely to believe that teachers have low
+
+expectations for them” than students with high engagement.
+
+“Non-metropolitan students have lower aspirations than metropolitan students regardless of [engagement] and performance”
+
+“ Feedback that is clear, purposeful, meaningful and compatible with students’ prior knowledge” is “associated with significantly higher levels of student achievement”
+
+Marking reports are often copy-pasted → AI can personalise reports from real mistakes and strengths, i.e. more accurate feedback + give them practice problems and revision tailored to what they need to improve on by analysing their results Giving Assessment Feedback | UNSW Staff Teaching Gateway 
+
+“Feedback has a significant impact on learning (Cohen & Singh, 2020); it has been described as "the most powerful single moderator that enhances achievement" (Hattie, 1999).”
+
+“Students often find assessment feedback unsatisfactory, for a wide range of reasons:
+
+When feedback is unclear (for example, "More", "What's this?", "Link?", or simply ticks and crosses), students  may not be able to gauge whether a response is positive or negative, whether and how the feedback is related to their mark and what they might do to improve.
+
+When feedback consists mainly of grammar and spelling corrections, and provides little or no advice for them to act on, students cannot tell what they have done well, what they need to change and why they have achieved the grade they have.
+
+Many assessment tasks are one-offs, intended for students to demonstrate their achievement for a summative grade; students cannot respond to the feedback with a further submission. Such tasks do not encourage risk-taking, experimentation, creativity or practice.
+
+Feedback that does not acknowledge how students' learning has progressed over time does not give them a sense of how far they have come and what they have yet to achieve.
+
+Students can encounter different (and inconsistent) comments from different lecturers on similar pieces of writing.”
+
+ Writing Effective Report Comments for New South Wales Standards | NSW School Reports 
+
+“Personalisation is essential”
+
+Teachers don’t like marking → mark for them, so the teacher’s just have to verify the reasoning, even and the flagged/borderline or high confidence band questions, this could lead to more people pursuing teaching - Education GPS - Australia - Teachers and teaching conditions (TALIS 2024) “The most commonly reported sources of stress [for teachers] are: having too much administrative work (69%), too much marking (50%), and keeping up with curriculum or programme changes (46%).
+https://www.acer.org/files/Five_challenges_in_Australian_school_education.pdf  "TEACHING IS BECOMING A LESS ATTRACTIVE CAREER OPTION FOR MORE ABLE SCHOOL LEAVERS"
+Internet information is contradictory to course information (e.g., in linear regression, it’s called x & y in the course but predictor and response variables online), this wastes student energy → fine-tuned and be a repository of truth https://www.acer.org/au/news/article/evaluating-information-online “teenagers find it particularly difficult to determine the credibility and trustworthiness of material on the internet.”
+Teachers’ workload, turnover intentions, and mental health: perspectives of Australian teachers | Social Psychology of Education | Springer Nature Link Teachers highly likely to suffer burnout, stress and mental health issues due to work
+Workload reduction reports The report here points to Unit and lesson planning, Learning strategy differentiation and student interventions and Learning resource differentiation as sources of high workload for teachers.
+Presenting
+2 teachers in a classroom
+Business has been adapting AI; education has to, but it's less agile[a]
+Close the educational disparities between schools [esp of socioeconomic causes] https://www.acer.org/files/Five_challenges_in_Australian_school_education.pdf  "THERE ARE GROWING DISPARITIES BETWEEN AUSTRALIA’S SCHOOLS AND THESE DISPARITIES ARE INCREASINGLY ASSOCIATED WITH SOCIOECONOMIC BACKGROUND"
+Differentiator: broad use AI for education
+Proprietary data
+Different interaction (not needing to copy-paste data) & more ethical too
+Anecdote: spending lots of time but not having specific feedback (also specific feedback is what helped me improve my abilities a lot)
+More meaningful connections (student-teacher helped by AI)
+Teachers don't match student style often
+
+Consists of
+[INPUT] question +  student question answers & marking criteria (already in HSC answers) → [OUTPUT] marks given to student short answer answers + confidence intervals + create feedback → increase student engagement
+
+[INPUT] student test results and feedback (already recorded in spreadsheets) → [OUTPUT] returns marking feedback for reports (can also provide info for each student of where they are at, what you’ve seen before [student tracker])
+
+[INPUT] Teacher Support Resources (already provided by NESA) → [FINE TUNING, MULTIPLE EPOCHS, RAG] → [OUTPUT] lesson plans | Student-side interface
+
+[INPUT] TSR + Reading Transcripts → [OUTPUT] Feedback
+
+Other Requirements
+ ∴ open-weight models [so can be used for coaching, maybe also add vision]
+Able to run on phone ()
+
+Note:
+The format of practice exams added will match the HSC papers already inputted
+To test we will use the official HSC paper
+Potentially, we will not even need to do any fine tuning and instead just the prompt you are a [teacher / quality assurance auditor] [CONFIRMED IN BUILD: no fine-tuning was needed. 32-answer regression: 78.1% exact match with official rubric, 100% within +/-1 band, zero wild misses. Details in the build log below.]
+
+Tools
+2nd genAI verifies output
+RAG
+Query_data [exact numbers, access Google Sheets]
+Gemini free api [STATUS: DeepSeek deepseek-v4-flash is active via the model abstraction layer - Gemini free tier / local Ollama are one-line swaps, no code changes]
+
+Planning
+Hugging Face Spaces / Dify Cloud: Deploy a streamlit/gradio app to HuggingFace Spaces or build the flow in Dify Cloud free hosted URL. Zero: platform runs the server; free tier works for the demo (open link on any phone). Cold start on free tier tied to the platform
+Uses Gemini free API (gemini 3.5 FLASH)
+Structured In-Context Prompting for student marks and feedback
+RAG for Teacher support resources
+
+Generative models / LM – For making materials and something else Idk.
+
+STEPS: work on workflow
+
+Architecture    
+
+  ┌─────────────────────────────────────┐
+
+                                 │   NESA Teacher Support Resources (Syllabus)  │
+
+                                 └─────────────┬───────────────────────┘
+
+                                                                           │ Vector Embeddings
+
+                                                                         ▼
+
+┌─────────────────────────────────────┐
+
+│                                     LangGraph State Machine                                                                                │
+
+├─────────────────────────────────────┤
+
+│                                                                                                                                                          
+
+│  [Workflow 1: Short Answer Marking]                                                                                          
+
+│  Input: Question + Marking Criteria + Student Answer + sample answer                                                            
+
+│    ├── Step 1: Grader Node ──► Generates Marks, Justification, Feedback              
+
+│    ├── Step 2: RAG Retriever ──► Pulls relevant Syllabus Support docs                      
+
+│    └── Step 3: Verifier Node ──► Verifies grade, assigns Confidence Score (%),        
+
+  |                                                                         refines feedback                                        
+
+│                                                                                                                                                                  
+
+│  [Workflow 2: Student Report Feedback Generation]                                                                  
+
+│  Input: Past Test Results + Feedback (Spreadsheet copy-paste)                                                    
+
+│    ├── Step 1: Spreadsheet Parser Node ──► Identifies error trends & score                    
+
+  | distributions                                                                                            
+
+│    ├── Step 2: RAG Retriever ──► Pulls outcome-aligned NESA targets (Band 3–6)
+
+│    └── Step 3: Report Generator ──► Outputs NESA-aligned report comments &
+
+|                                                                   improvement strategies
+
+└─────────────────────────────────────┘
+
+2 agents:
+
+Parameter
+
+	
+
+Marker Agent
+
+	
+
+Verifier Agent
+
+
+
+
+System Instruction
+
+	
+
+"You are an HSC Enterprise Computing teacher. Identify key NESA syllabus terms and award marks liberally based on the rubric."
+
+	
+
+"You are a NESA HSC Quality Assurance Auditor. Interrogate the proposed marks. Be critical, look for hallucinated concepts, and recalculate confidence."
+
+
+
+
+Temperature/Thinking
+
+	
+
+Higher temperature (0.4 - 0.7) to allow creative interpretation of student phrasing.
+
+	
+
+Lower temperature (0.2) for rigid, deterministic mathematical and logic checks.
+
+
+
+
+Output Schema
+
+	
+
+Generates detailed qualitative feedback and provisional breakdown.
+
+	
+
+Returns strict JSON with final numeric marks, boolean flags (is_approved), and a calculated confidence interval.
+
+Inputs for the AI:
+
+https://nswschoolreports.com.au/blog/effective-report-comments -
+
+1. Personalisation is Essential
+
+Every comment should use the student's given name and be written in third person. Generic comments that could apply to any student fail to provide meaningful feedback. Instead of "The student has worked well...", write "Emily has demonstrated strong analytical skills..."
+
+2. Balance Strengths with Growth Areas
+
+NSW reporting policy requires comments to begin with positive observations about student achievement, then identify specific areas for improvement. This balanced approach maintains student confidence while providing clear direction for growth.
+
+3. Link to NSW Curriculum Outcomes
+
+Comments should reference specific Key Learning Areas (KLAs) and syllabus outcomes. Rather than vague statements, describe what knowledge and skills the student has demonstrated in relation to curriculum expectations.
+
+4. Use Evidence-Based Language
+
+Support your observations with specific examples from the reporting period. "Jack has improved his persuasive writing, demonstrated through his well-structured speeches" is more meaningful than "Jack is improving in English."
+
+Avoiding Common Pitfalls
+
+Many teachers, especially those new to NSW schools, fall into these traps:
+
+Using comment banks without personalisation: While comment banks or comment libraries can save time, copying generic phrases creates impersonal reports. Use AI to personalise instead of just pulling from a static comment bank.
+Focusing on behaviour over achievement: Unless behaviour directly impacts learning, comments should describe knowledge and skills, not conduct.
+Vague improvement suggestions: "Needs to try harder" isn't actionable. Specify what the student should focus on.
+Inconsistent tone across subjects: Maintain a professional, supportive tone throughout all subjects.
+
+[a]source: personal anecdote from Alfonso

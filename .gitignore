@@ -8,9 +8,11 @@ __pycache__/
 .venv/
 venv/
 
-# 数据/缓存（大文件与本地产物）
-data/*
+# 数据/缓存（大文件与本地产物排除，核心数据文件例外）
+data/chroma_db/
 !data/.gitkeep
+!data/questions.json
+!data/syllabus.json
 *.log
 
 # IDE / OS
