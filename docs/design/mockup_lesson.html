@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesson Planner · Design Mockup</title>
 <style>
-  /* Same exam-paper design language as the marking page:
-     paper #FAFAF7 · ink #1A2332 · red pen #B03A2E · rule #E2DED4
-     No gradients, no shadows, no emoji, no icons, hard corners. */
   :root {
     --paper: #FAFAF7; --sheet: #FFFFFF; --ink: #1A2332; --ink-soft: #4A5568;
     --ink-faint: #889298; --red: #B03A2E; --rule: #E2DED4; --rule-strong: #C9C4B8;
@@ -19,6 +16,9 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     line-height: 1.55; -webkit-font-smoothing: antialiased;
   }
+  body.lang-zh .en { display: none !important; }
+  body.lang-en .zh { display: none !important; }
+
   .topbar { border-bottom: 1px solid var(--rule); }
   .topbar-inner {
     max-width: 1360px; margin: 0 auto; padding: 18px 32px 16px;
@@ -28,19 +28,23 @@
   .brand-name { font-size: 1.18rem; font-weight: 700; }
   .brand-note { font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; }
   .lang { font-size: 0.85rem; color: var(--ink-soft); }
-  .lang b { color: var(--ink); font-weight: 600; }
-  .lang span { padding: 0 7px; color: var(--rule-strong); }
+  .lang a { color: var(--ink-soft); text-decoration: none; padding: 0 7px; }
+  .lang a.active { color: var(--ink); font-weight: 700; }
+  .lang .sep { color: var(--rule-strong); }
+
   .mockup-tag { max-width: 1360px; margin: 0 auto; padding: 0 32px; }
   .mockup-tag p {
     display: inline-block; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--red); border-bottom: 2px solid var(--red); padding: 10px 0 4px;
   }
+
   .cols {
     max-width: 1360px; margin: 0 auto; padding: 26px 32px 64px;
     display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: 52px; align-items: start;
   }
   @media (max-width: 980px) { .cols { grid-template-columns: 1fr; gap: 36px; } }
+
   .label {
     font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--ink-soft); padding-bottom: 8px; border-bottom: 1px solid var(--rule-strong);
@@ -48,7 +52,6 @@
   }
   .label .mark { color: var(--red); }
 
-  /* ---- topic checklist (left) ---- */
   .fa-head {
     display: flex; justify-content: space-between; align-items: baseline;
     margin: 20px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--rule);
@@ -60,10 +63,7 @@
     font-size: 0.76rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--ink-soft); margin-bottom: 7px;
   }
-  label.tick {
-    display: flex; gap: 10px; align-items: flex-start;
-    padding: 5px 0; font-size: 0.88rem; cursor: pointer; color: var(--ink);
-  }
+  label.tick { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; font-size: 0.88rem; cursor: pointer; color: var(--ink); }
   label.tick:hover { color: var(--red); }
   label.tick input {
     appearance: none; width: 15px; height: 15px; flex: 0 0 15px; margin-top: 4px;
@@ -77,11 +77,10 @@
   }
   .check-foot {
     margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--rule);
-    font-size: 0.8rem; color: var(--ink-soft); display: flex; justify-content: space-between;
+    font-size: 0.8rem; color: var(--ink-soft); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
   }
   .check-foot b { color: var(--red); }
 
-  /* ---- import + generate (right top) ---- */
   textarea.refdoc {
     width: 100%; min-height: 110px; resize: vertical;
     border: 1px solid var(--rule-strong); background: var(--sheet);
@@ -96,11 +95,7 @@
   }
   .btn-gen:hover { background: #98301f; }
 
-  /* ---- lesson plan output ---- */
-  .plan-sheet {
-    margin-top: 34px; background: var(--sheet); border: 1px solid var(--rule-strong);
-    padding: 30px 32px 28px;
-  }
+  .plan-sheet { margin-top: 34px; background: var(--sheet); border: 1px solid var(--rule-strong); padding: 30px 32px 28px; }
   .plan-head { border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
   .plan-title { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.01em; }
   .plan-sub { font-size: 0.8rem; color: var(--ink-soft); margin-top: 4px; }
@@ -111,17 +106,11 @@
     color: var(--ink-soft); margin: 24px 0 10px;
   }
   ul.objectives { list-style: none; }
-  ul.objectives li {
-    padding: 6px 0 6px 20px; position: relative; font-size: 0.92rem;
-    border-bottom: 1px solid #F0EDE5;
-  }
-  ul.objectives li::before {
-    content: "·"; position: absolute; left: 0; color: var(--red); font-weight: 700;
-  }
+  ul.objectives li { padding: 6px 0 6px 20px; position: relative; font-size: 0.92rem; border-bottom: 1px solid #F0EDE5; }
+  ul.objectives li::before { content: "·"; position: absolute; left: 2px; color: var(--red); font-weight: 800; }
 
-  /* timeline as a ruled programme, like a real lesson sheet */
   .flow { border-top: 1px solid var(--rule); }
-  .flow-row { display: grid; grid-template-columns: 92px 1fr; border-bottom: 1px solid var(--rule); }
+  .flow-row { display: grid; grid-template-columns: 96px 1fr; border-bottom: 1px solid var(--rule); }
   .flow-time {
     padding: 11px 12px 11px 0; font-size: 0.78rem; font-weight: 700; color: var(--red);
     border-right: 1px solid var(--rule); letter-spacing: 0.02em;
@@ -136,9 +125,9 @@
   }
   .assess b { display: block; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
   .aligned { margin-top: 16px; font-size: 0.8rem; color: var(--ink-soft); }
-  .aligned b { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .aligned > b { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 4px; }
   .aligned .dp { padding: 2px 0 2px 14px; position: relative; }
-  .aligned .dp::before { content: "·"; position: absolute; left: 2px; color: var(--red); font-weight: 700; }
+  .aligned .dp::before { content: "·"; position: absolute; left: 2px; color: var(--red); font-weight: 800; }
 
   footer.foot {
     border-top: 1px solid var(--rule); max-width: 1360px; margin: 0 auto;
@@ -147,123 +136,248 @@
   }
 </style>
 </head>
-<body>
+<body class="lang-en">
 
 <div class="topbar">
   <div class="topbar-inner">
     <div class="brand">
       <span class="brand-name">CoachAI</span>
-      <span class="brand-note">working name · rename in progress</span>
+      <span class="brand-note">
+        <span class="en">working name · rename in progress</span>
+        <span class="zh">暂用名 · 待更名</span>
+      </span>
     </div>
-    <div class="lang"><b>EN</b><span>·</span><a href="#" style="color:inherit;text-decoration:none;">中文</a></div>
+    <div class="lang">
+      <a href="#" id="btn-en" class="active" onclick="setLang('en'); return false;">EN</a>
+      <span class="sep">·</span>
+      <a href="#" id="btn-zh" onclick="setLang('zh'); return false;">中文</a>
+    </div>
   </div>
 </div>
 
 <div class="mockup-tag">
-  <p>Design mockup v1 · lesson planner page · exam-paper design language</p>
+  <p>
+    <span class="en">Design mockup v1 · lesson planner · exam-paper design language</span>
+    <span class="zh">设计稿 v1 · 教案规划页 · 考试纸设计语言</span>
+  </p>
 </div>
 
 <main class="cols">
 
-  <!-- LEFT: syllabus checklist -->
+  <!-- LEFT: checklist -->
   <section>
-    <div class="label">1 · Choose topics <span class="mark">/</span> 勾选教学主题</div>
+    <div class="label">
+      <span class="en">1 · Choose topics</span>
+      <span class="zh">1 · 勾选教学主题</span>
+    </div>
 
     <div class="fa-head">
       <span class="fa-name">Data science</span>
-      <span class="fa-year">Year 12 · NESA syllabus</span>
+      <span class="fa-year">
+        <span class="en">Year 12 · NESA syllabus</span>
+        <span class="zh">12 年级 · NESA 官方大纲</span>
+      </span>
     </div>
 
     <div class="group">
-      <div class="group-name">Collecting, storing and analysing data</div>
-      <label class="tick"><input type="checkbox" checked> Explore the difference between quantitative and qualitative data</label>
-      <label class="tick"><input type="checkbox" checked> Determine which data types are used to represent quantitative and qualitative data</label>
-      <label class="tick"><input type="checkbox"> Explore nominal, ordinal, interval and ratio levels of measurement applied to data</label>
-      <label class="tick"><input type="checkbox" checked> Investigate data sampling, including manual and computerised methods of active and passive data collection</label>
+      <div class="group-name">
+        <span class="en">Collecting, storing and analysing data</span>
+        <span class="zh">数据的收集、存储与分析</span>
+      </div>
+      <label class="tick"><input type="checkbox" checked>
+        <span class="en">Explore the difference between quantitative and qualitative data</span>
+        <span class="zh">辨析定量数据与定性数据的区别</span>
+      </label>
+      <label class="tick"><input type="checkbox" checked>
+        <span class="en">Determine which data types are used to represent quantitative and qualitative data</span>
+        <span class="zh">判断用于表示定量/定性数据的数据类型</span>
+      </label>
+      <label class="tick"><input type="checkbox">
+        <span class="en">Explore nominal, ordinal, interval and ratio levels of measurement applied to data</span>
+        <span class="zh">了解数据的定类、定序、定距、定比四种测量层级</span>
+      </label>
+      <label class="tick"><input type="checkbox" checked>
+        <span class="en">Investigate data sampling, including manual and computerised methods of active and passive data collection</span>
+        <span class="zh">研究数据抽样，包括主动/被动数据采集的人工与计算机化方法</span>
+      </label>
     </div>
 
     <div class="group">
-      <div class="group-name">Data quality</div>
-      <label class="tick"><input type="checkbox"> Investigate the ethical use of data for social or enterprise research purposes</label>
-      <label class="tick"><input type="checkbox"> Explore social, ethical and legal issues associated with using data</label>
-      <label class="tick"><input type="checkbox" checked> Investigate the legal issues surrounding data collection and handling</label>
+      <div class="group-name">
+        <span class="en">Data quality</span>
+        <span class="zh">数据质量</span>
+      </div>
+      <label class="tick"><input type="checkbox">
+        <span class="en">Investigate the ethical use of data for social or enterprise research purposes</span>
+        <span class="zh">研究数据用于社会或企业研究时的伦理问题</span>
+      </label>
+      <label class="tick"><input type="checkbox">
+        <span class="en">Explore social, ethical and legal issues associated with using data</span>
+        <span class="zh">探讨使用数据涉及的社会、伦理与法律问题</span>
+      </label>
+      <label class="tick"><input type="checkbox" checked>
+        <span class="en">Investigate the legal issues surrounding data collection and handling</span>
+        <span class="zh">研究数据收集与处理相关的法律问题</span>
+      </label>
     </div>
 
     <div class="group">
-      <div class="group-name">Interpreting data</div>
-      <label class="tick"><input type="checkbox"> Apply techniques to manage and analyse large data sets</label>
-      <label class="tick"><input type="checkbox"> Evaluate data visualisations for accuracy and bias</label>
+      <div class="group-name">
+        <span class="en">Interpreting data</span>
+        <span class="zh">数据解读</span>
+      </div>
+      <label class="tick"><input type="checkbox">
+        <span class="en">Apply techniques to manage and analyse large data sets</span>
+        <span class="zh">运用技术管理和分析大型数据集</span>
+      </label>
+      <label class="tick"><input type="checkbox">
+        <span class="en">Evaluate data visualisations for accuracy and bias</span>
+        <span class="zh">评估数据可视化的准确性与偏差</span>
+      </label>
     </div>
 
     <div class="check-foot">
-      <span><b>4</b> of 10 dot points selected</span>
-      <span>Outcomes: EC-12-01, EC-12-05</span>
+      <span>
+        <span class="en"><b>4</b> of 10 dot points selected</span>
+        <span class="zh">已选 <b>4</b> / 10 个知识点</span>
+      </span>
+      <span>EC-12-01 · EC-12-05</span>
     </div>
   </section>
 
-  <!-- RIGHT: import + generated plan -->
+  <!-- RIGHT -->
   <section>
-    <div class="label">2 · Import reference material <span class="mark">/</span> 导入参考文档</div>
-    <textarea class="refdoc">Paste the class notes or textbook section here: the planner follows the school's own material and keeps terminology consistent with it. (Sample text shown for layout purposes.)</textarea>
-    <div class="hint">Plain text or pasted from your document. Files sent by email can be pasted here directly.</div>
+    <div class="label">
+      <span class="en">2 · Import reference material</span>
+      <span class="zh">2 · 导入参考文档</span>
+    </div>
+    <textarea class="refdoc" id="refdoc-text">Paste the class notes or textbook section here. The planner follows the school's own material and keeps terminology consistent with it.</textarea>
+    <div class="hint">
+      <span class="en">Plain text, or pasted from your document. Files sent by email can be pasted here directly.</span>
+      <span class="zh">纯文本，或从你的文档直接粘贴。邮件收到的文件内容也可以粘贴在这里。</span>
+    </div>
 
-    <button class="btn-gen">Generate lesson plan</button>
+    <button class="btn-gen">
+      <span class="en">Generate lesson plan</span>
+      <span class="zh">生成教案</span>
+    </button>
 
     <div class="plan-sheet">
       <div class="plan-head">
-        <div class="plan-title">Data collection and quality</div>
-        <div class="plan-sub"><b>Year 12 · Data science</b> · 60 min · Draft · teacher edits before use</div>
+        <div class="plan-title">
+          <span class="en">Data collection and quality</span>
+          <span class="zh">数据的收集与质量</span>
+        </div>
+        <div class="plan-sub">
+          <span class="en"><b>Year 12 · Data science</b> · 60 min · Draft · teacher edits before use</span>
+          <span class="zh"><b>12 年级 · Data science</b> · 60 分钟 · 草稿 · 教师修改后使用</span>
+        </div>
       </div>
 
-      <h4 class="plan-h">Learning objectives</h4>
+      <h4 class="plan-h">
+        <span class="en">Learning objectives</span>
+        <span class="zh">学习目标</span>
+      </h4>
       <ul class="objectives">
-        <li>Distinguish quantitative from qualitative data and match data types to each</li>
-        <li>Select an appropriate sampling method for a given enterprise scenario</li>
-        <li>Identify the legal obligations that apply when collecting student-adjacent data</li>
+        <li>
+          <span class="en">Distinguish quantitative from qualitative data and match data types to each</span>
+          <span class="zh">区分定量与定性数据，并为它们匹配对应的数据类型</span>
+        </li>
+        <li>
+          <span class="en">Select an appropriate sampling method for a given enterprise scenario</span>
+          <span class="zh">针对给定的企业场景选择合适的抽样方法</span>
+        </li>
+        <li>
+          <span class="en">Identify the legal obligations that apply when collecting student-adjacent data</span>
+          <span class="zh">识别收集与学生相关数据时适用的法律义务</span>
+        </li>
       </ul>
 
-      <h4 class="plan-h">Lesson flow</h4>
+      <h4 class="plan-h">
+        <span class="en">Lesson flow</span>
+        <span class="zh">课堂流程</span>
+      </h4>
       <div class="flow">
         <div class="flow-row">
-          <div class="flow-time">0–10 min</div>
+          <div class="flow-time">0–10</div>
           <div class="flow-body">
-            <div class="t">Hook: the messiest survey</div>
-            <div class="d">Show a deliberately flawed survey. Students list everything wrong with it, leading into quality categories.</div>
+            <div class="t">
+              <span class="en">Hook: the messiest survey</span>
+              <span class="zh">导入：最糟糕的问卷</span>
+            </div>
+            <div class="d">
+              <span class="en">Show a deliberately flawed survey. Students list everything wrong with it, leading into quality categories.</span>
+              <span class="zh">展示一份故意设计得漏洞百出的问卷，让学生找出所有问题，引出数据质量分类。</span>
+            </div>
           </div>
         </div>
         <div class="flow-row">
-          <div class="flow-time">10–30 min</div>
+          <div class="flow-time">10–30</div>
           <div class="flow-body">
-            <div class="t">Direct instruction + worked example</div>
-            <div class="d">Quantitative vs qualitative; data types; levels of measurement. Worked example using the class's own attendance data.</div>
+            <div class="t">
+              <span class="en">Direct instruction + worked example</span>
+              <span class="zh">讲解与例题</span>
+            </div>
+            <div class="d">
+              <span class="en">Quantitative vs qualitative; data types; levels of measurement. Worked example using the class's own attendance data.</span>
+              <span class="zh">定量与定性、数据类型、测量层级；用班级自己的出勤数据做例题。</span>
+            </div>
           </div>
         </div>
         <div class="flow-row">
-          <div class="flow-time">30–50 min</div>
+          <div class="flow-time">30–50</div>
           <div class="flow-body">
-            <div class="t">Group task: sampling choice</div>
-            <div class="d">Each group receives an enterprise scenario and defends a sampling method (active vs passive, manual vs computerised).</div>
+            <div class="t">
+              <span class="en">Group task: sampling choice</span>
+              <span class="zh">小组任务：选择抽样方法</span>
+            </div>
+            <div class="d">
+              <span class="en">Each group receives an enterprise scenario and defends a sampling method (active vs passive, manual vs computerised).</span>
+              <span class="zh">每组拿到一个企业场景，论证其抽样方法的选择（主动/被动、人工/计算机化）。</span>
+            </div>
           </div>
         </div>
         <div class="flow-row">
-          <div class="flow-time">50–60 min</div>
+          <div class="flow-time">50–60</div>
           <div class="flow-body">
-            <div class="t">Debrief + exit ticket</div>
-            <div class="d">One question: which legal issue is most likely to apply to your scenario, and why?</div>
+            <div class="t">
+              <span class="en">Debrief + exit ticket</span>
+              <span class="zh">总结与出门条</span>
+            </div>
+            <div class="d">
+              <span class="en">One question: which legal issue is most likely to apply to your scenario, and why?</span>
+              <span class="zh">一个问题：你的场景最可能涉及哪项法律问题？为什么？</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="assess">
-        <b>Assessment point</b>
-        Exit ticket sorted into: needs reteach / on track / ready for extension. Feeds directly into the next lesson's groupings.
+        <b>
+          <span class="en">Assessment point</span>
+          <span class="zh">评估点</span>
+        </b>
+        <span class="en">Exit ticket sorted into: needs reteach / on track / ready for extension. Feeds directly into the next lesson's groupings.</span>
+        <span class="zh">出门条分三类：需重讲 / 已掌握 / 可拓展，直接用于下一节课的分组。</span>
       </div>
 
       <div class="aligned">
-        <b>Syllabus alignment</b>
-        <div class="dp">Explore the difference between quantitative and qualitative data</div>
-        <div class="dp">Investigate data sampling, including manual and computerised methods</div>
-        <div class="dp">Investigate the legal issues surrounding data collection and handling</div>
+        <b>
+          <span class="en">Syllabus alignment</span>
+          <span class="zh">大纲对齐</span>
+        </b>
+        <div class="dp">
+          <span class="en">Explore the difference between quantitative and qualitative data</span>
+          <span class="zh">辨析定量数据与定性数据的区别</span>
+        </div>
+        <div class="dp">
+          <span class="en">Investigate data sampling, including manual and computerised methods</span>
+          <span class="zh">研究数据抽样，包括人工与计算机化方法</span>
+        </div>
+        <div class="dp">
+          <span class="en">Investigate the legal issues surrounding data collection and handling</span>
+          <span class="zh">研究数据收集与处理相关的法律问题</span>
+        </div>
       </div>
     </div>
   </section>
@@ -271,9 +385,27 @@
 </main>
 
 <footer class="foot">
-  <span>CoachAI lesson planner · mockup for team review (not the final build)</span>
-  <span>Checklist data: NESA digital syllabus (extracted, 180 dot points)</span>
+  <span>
+    <span class="en">CoachAI lesson planner · mockup for team review (not the final build)</span>
+    <span class="zh">CoachAI 教案规划页 · 供团队评审的设计稿（非最终成品）</span>
+  </span>
+  <span>
+    <span class="en">Checklist data: NESA digital syllabus (extracted, 180 dot points)</span>
+    <span class="zh">清单数据：NESA 官方数字大纲（已提取 180 个知识点）</span>
+  </span>
 </footer>
 
+<script>
+  var REF_EN = "Paste the class notes or textbook section here. The planner follows the school's own material and keeps terminology consistent with it.";
+  var REF_ZH = "在这里粘贴课堂笔记或教材章节。教案生成会以学校的材料为准，保持术语一致。";
+
+  function setLang(lang) {
+    document.body.className = 'lang-' + lang;
+    document.getElementById('btn-en').className = (lang === 'en') ? 'active' : '';
+    document.getElementById('btn-zh').className = (lang === 'zh') ? 'active' : '';
+    var ta = document.getElementById('refdoc-text');
+    if (ta) ta.value = (lang === 'zh') ? REF_ZH : REF_EN;
+  }
+</script>
 </body>
 </html>
