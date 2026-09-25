@@ -36,6 +36,9 @@ from privacy import anonymizer
 # marking engine uses, via questions_io).
 from questions_io import CUSTOM_FILE, load_all_questions, save_custom_question
 
+# Phase 5: student tracking + report comments read/write the persistence layer.
+from store import db as store_db
+
 BASE_DIR = Path(__file__).resolve().parent
 QUESTIONS_PATH = BASE_DIR / "data" / "questions.json"
 CUSTOM_QUESTIONS_PATH = BASE_DIR / "data" / CUSTOM_FILE
@@ -121,6 +124,41 @@ I18N = {
         "lp_meta_ref": "参考材料 {n} 字",
         "lp_meta_rag_on": "已引用 NESA TSR 材料",
         "lp_meta_rag_off": "未引用 TSR 材料",
+        # ---- Phase 5: 学生 tab（追踪画像 + 报告评语） ----
+        "tab_students": "学生",
+        "st_student_label": "选择学生",
+        "st_student_ph": "从学生名单选择…",
+        "st_analyze_btn": "分析进度",
+        "st_empty_profile": "选择学生后点击「分析进度」，追踪画像将显示在这里。",
+        "st_sheet_sub_records": "条批改记录",
+        "st_level": "当前水平",
+        "st_trend": "趋势",
+        "st_trend_improving": "上升",
+        "st_trend_stable": "稳定",
+        "st_trend_declining": "下滑",
+        "st_trend_volatile": "波动",
+        "st_trend_na": "数据不足",
+        "st_evidence": "依据",
+        "st_weak": "薄弱点",
+        "st_recos": "教学建议",
+        "st_no_data": "该学生暂无可用批改记录，先完成批改后再来分析。",
+        "st_empty_report": "填写报告周期与补充要点，点击「生成评语」，草稿将显示在这里。",
+        "st_period_label": "报告周期",
+        "st_period_ph": "例如 Term 3 2026",
+        "st_notes_label": "老师补充要点（可选）",
+        "st_notes_ph": "写下希望评语体现的观察点，将自然融入评语…",
+        "st_gen_btn": "生成评语",
+        "st_comment": "评语",
+        "st_comment_evidence": "评语依据",
+        "st_selfeval": "学生自评提醒",
+        "st_save_btn": "保存到记录",
+        "st_saved": "已保存到记录：{name}（{period}）",
+        "st_saved_none": "请先生成评语，再保存。",
+        "st_save_err": "保存失败：",
+        "st_draft": "草稿 · 教师确认后使用",
+        "st_err_no_student": "请先选择学生。",
+        "st_err_backend": "学生模块尚未就绪：无法导入 agents.tracker / agents.report_writer。",
+        "st_err_unknown": "生成失败：",
     },
     "en": {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
@@ -200,6 +238,41 @@ I18N = {
         "lp_meta_ref": "Reference material: {n} chars",
         "lp_meta_rag_on": "NESA TSR material cited",
         "lp_meta_rag_off": "No TSR material cited",
+        # ---- Phase 5: students tab (progress profile + report comment) ----
+        "tab_students": "Students",
+        "st_student_label": "Student",
+        "st_student_ph": "Pick a student…",
+        "st_analyze_btn": "Analyse progress",
+        "st_empty_profile": "Pick a student and click Analyse progress. The progress profile appears here.",
+        "st_sheet_sub_records": "marking records",
+        "st_level": "Current level",
+        "st_trend": "Trend",
+        "st_trend_improving": "Improving",
+        "st_trend_stable": "Stable",
+        "st_trend_declining": "Declining",
+        "st_trend_volatile": "Volatile",
+        "st_trend_na": "Not enough data",
+        "st_evidence": "Evidence",
+        "st_weak": "Focus areas",
+        "st_recos": "Recommendations",
+        "st_no_data": "No usable marking records yet. Complete some marking first, then analyse again.",
+        "st_empty_report": "Fill in the reporting period and any notes, then click Generate. The draft comment appears here.",
+        "st_period_label": "Reporting period",
+        "st_period_ph": "e.g. Term 3 2026",
+        "st_notes_label": "Teacher notes (optional)",
+        "st_notes_ph": "Observations you want reflected in the comment; they are woven in naturally…",
+        "st_gen_btn": "Generate comment",
+        "st_comment": "Comment",
+        "st_comment_evidence": "Evidence",
+        "st_selfeval": "Student self-evaluation prompt",
+        "st_save_btn": "Save to records",
+        "st_saved": "Saved to records: {name} ({period})",
+        "st_saved_none": "Generate a comment first, then save it.",
+        "st_save_err": "Could not save: ",
+        "st_draft": "Draft · teacher confirms before use",
+        "st_err_no_student": "Pick a student first.",
+        "st_err_backend": "Student module not ready: cannot import agents.tracker / agents.report_writer.",
+        "st_err_unknown": "Generation failed:",
     },
 }
 
@@ -584,10 +657,193 @@ def generate_plan_safe(dot_points, reference_text, year, duration_min, focus_are
         return err_card(f'{L["lp_err_unknown"]} {e}')
     return render_plan_html(plan, plan_lang)
 
+# ---------------------------------------------------------------- 学生追踪（Phase 5）
+# Trend tag colours: improving / stable / declining / volatile / not enough data.
+ST_TREND_COLOR = {
+    "improving": "#2F6D4F",
+    "stable": "#1F4E79",
+    "declining": "#B03A2E",
+    "volatile": "#B26A00",
+    "insufficient_data": "#8A93A0",
+}
+
+
+def st_student_choices(students: list, lang: str) -> list[tuple[str, int]]:
+    """(label, value=student id) pairs, e.g. 'Alex Chen · Year 12'."""
+    out = []
+    for s in students or []:
+        label = str(s.get("name") or "?").strip()
+        year = str(s.get("year") or "").strip()
+        if year:
+            label = f"{label} · {year}"
+        out.append((label, s.get("id")))
+    return out
+
+
+def render_profile_empty(lang: str) -> str:
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["st_empty_profile"]}</div>'
+
+
+def render_report_empty(lang: str) -> str:
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["st_empty_report"]}</div>'
+
+
+def st_trend_label(trend: str, L: dict) -> str:
+    key = "st_trend_na" if trend in ("", "insufficient_data") else f"st_trend_{trend}"
+    return L.get(key, L.get("st_trend_na", trend))
+
+
+def render_profile_html(profile: dict, lang: str) -> str:
+    """Render a tracker profile as a paper-sheet card (no emoji, no markdown)."""
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+
+    h = ['<div class="st-sheet">']
+    h.append('<div class="st-head">')
+    h.append(f'<div class="st-name">{esc(str(profile.get("student_name", "")).strip())}</div>')
+    sub_bits = [f'{int(profile.get("total_submissions") or 0)} {L["st_sheet_sub_records"]}']
+    if profile.get("avg_score_rate") is not None:
+        sub_bits.append(f'{L["st_level"]}: {round(float(profile["avg_score_rate"]) * 100)}%')
+    h.append(f'<div class="st-sub">{" · ".join(sub_bits)}</div>')
+    h.append('</div>')
+
+    if not profile.get("has_data"):
+        h.append(f'<div class="st-note">{esc(L["st_no_data"])}</div>')
+        h.append('</div>')
+        return "".join(h)
+
+    # ---- current level (LLM-written prose)
+    level = str(profile.get("current_level") or "").strip()
+    if level:
+        h.append(f'<div class="st-row"><div class="st-k">{L["st_level"]}</div>'
+                 f'<div class="st-v">{esc(level)}</div></div>')
+
+    # ---- trend tag + deterministic evidence bullets
+    trend = str(profile.get("trend") or "")
+    color = ST_TREND_COLOR.get(trend, ST_TREND_COLOR["insufficient_data"])
+    h.append(f'<div class="st-row"><div class="st-k">{L["st_trend"]}</div>'
+             f'<div class="st-v"><span class="st-tag" style="color:{color}">'
+             f'{esc(st_trend_label(trend, L))}</span>')
+    evidence = [str(e).strip() for e in (profile.get("trend_evidence") or []) if str(e).strip()]
+    if evidence:
+        h.append(f'<div class="st-k" style="margin-top:12px">{L["st_evidence"]}</div><ul class="st-list">')
+        h += [f"<li>{esc(e)}</li>" for e in evidence]
+        h.append('</ul>')
+    h.append('</div></div>')
+
+    # ---- weak areas (deterministic)
+    weak = [str(w).strip() for w in (profile.get("weak_areas") or []) if str(w).strip()]
+    if weak:
+        h.append(f'<div class="st-row"><div class="st-k">{L["st_weak"]}</div><ul class="st-list">')
+        h += [f"<li>{esc(w)}</li>" for w in weak]
+        h.append('</ul></div>')
+
+    # ---- recommendations (LLM-written)
+    recos = [str(r).strip() for r in (profile.get("recommendations") or []) if str(r).strip()]
+    if recos:
+        h.append(f'<div class="st-row"><div class="st-k">{L["st_recos"]}</div><ul class="st-list">')
+        h += [f"<li>{esc(r)}</li>" for r in recos]
+        h.append('</ul></div>')
+
+    h.append('</div>')
+    return "".join(h)
+
+
+def render_report_html(report: dict, lang: str) -> str:
+    """Render a generated report comment as a paper-sheet card."""
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+
+    h = ['<div class="st-sheet">']
+    h.append('<div class="st-head">')
+    h.append(f'<div class="st-name">{esc(str(report.get("student_name", "")).strip())}</div>')
+    sub_bits = [esc(str(report.get("period") or "").strip() or "-"), L["st_draft"]]
+    h.append(f'<div class="st-sub">{" · ".join(sub_bits)}</div>')
+    h.append('</div>')
+
+    h.append(f'<div class="st-comment-text">{esc(str(report.get("comment") or "").strip())}</div>')
+
+    evidence = [str(e).strip() for e in (report.get("evidence") or []) if str(e).strip()]
+    if evidence:
+        h.append(f'<div class="st-k" style="margin-top:22px">{L["st_comment_evidence"]}</div>'
+                 '<ul class="st-list">')
+        h += [f"<li>{esc(e)}</li>" for e in evidence]
+        h.append('</ul>')
+
+    self_eval = str(report.get("self_eval_note") or "").strip()
+    if self_eval:
+        h.append(f'<div class="st-self"><b>{L["st_selfeval"]}</b>{esc(self_eval)}</div>')
+
+    h.append('</div>')
+    return "".join(h)
+
+
+def st_analyze_safe(student_id, lang: str) -> str:
+    """Run the tracker; import/LLM failures come back as friendly cards."""
+    L = I18N.get(lang, I18N["en"])
+    if not student_id:
+        return err_card(L["st_err_no_student"])
+    try:
+        from agents.tracker import analyze_student  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import agents.tracker 失败: {e}", file=sys.stderr)
+        return err_card(L["st_err_backend"], str(e))
+    try:
+        profile = analyze_student(int(student_id))
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] analyze_student 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["st_err_unknown"]} {e}')
+    if not isinstance(profile, dict):
+        return err_card(f'{L["st_err_unknown"]} unexpected type {type(profile).__name__}')
+    return render_profile_html(profile, lang)
+
+
+def st_generate_safe(student_id, period, teacher_notes, lang: str):
+    """Generate one report comment. Returns (html, report_state, save_btn_update)."""
+    L = I18N.get(lang, I18N["en"])
+    off = gr.update(interactive=False)
+    if not student_id:
+        return err_card(L["st_err_no_student"]), None, off
+    try:
+        from agents.report_writer import generate_report_comment  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import agents.report_writer 失败: {e}", file=sys.stderr)
+        return err_card(L["st_err_backend"], str(e)), None, off
+    try:
+        report = generate_report_comment(
+            int(student_id), (period or "").strip(),
+            teacher_notes=(teacher_notes or "").strip(),
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] generate_report_comment 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["st_err_unknown"]} {e}'), None, off
+    if not isinstance(report, dict) or not report.get("comment"):
+        return err_card(f'{L["st_err_unknown"]} empty comment'), None, off
+    return render_report_html(report, lang), report, gr.update(interactive=True)
+
+
+def st_save_safe(report, lang: str):
+    """Persist the generated comment to store.db. Returns (status_md, save_btn)."""
+    L = I18N.get(lang, I18N["en"])
+    if not report:
+        return L["st_saved_none"], gr.update()
+    try:
+        store_db.add_report_comment(
+            int(report.get("student_id")), report.get("period"),
+            report.get("comment"), teacher_notes=report.get("teacher_notes"),
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] add_report_comment 调用失败: {e}", file=sys.stderr)
+        return f'{L["st_save_err"]} {e}', gr.update()
+    return (L["st_saved"].format(name=report.get("student_name", ""),
+                                 period=report.get("period") or "-"),
+            gr.update(interactive=False))
+
 # ---------------------------------------------------------------- Gradio 界面
 PAGE_CSS = """
 :root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#143A5C;
         --orange:#E69F00; --orange-deep:#C77F00; --line:#E8E2D8; --card:#FFFFFF;
+        --red:#B03A2E; --rule:#E2DED4;
         --soft:#F5F2EC; --serif: Georgia, "Times New Roman", "Songti SC", "SimSun", serif; }
 body { background: var(--paper) !important; }
 body, .gradio-container { color: var(--ink); }
@@ -737,6 +993,42 @@ body, .gradio-container { color: var(--ink); }
     font-size:.92em !important; color:#33404F !important; line-height:1.5; }
 #lp-counter p { font-size:.82em !important; color:#8A93A0 !important; margin: 2px 0 0; }
 
+/* ---------- students tab (Phase 5) ---------- */
+#st-analyze-btn, #st-gen-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
+    border: none !important; border-radius: 8px !important; font-weight: 700 !important;
+    padding: 15px 56px !important; font-size: 1.05em !important; letter-spacing: .3px;
+    box-shadow: 0 4px 14px rgba(31,78,121,.28) !important; transition: all .18s ease !important; }
+#st-analyze-btn:hover, #st-gen-btn:hover { transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
+#st-analyze-btn:active, #st-gen-btn:active { transform: translateY(0); }
+#st-analyze-btn:disabled, #st-gen-btn:disabled { opacity:.55 !important; }
+#st-save-btn { border:1px solid var(--blue) !important; color: var(--blue) !important;
+    background:#fff !important; border-radius:8px !important; font-weight:700 !important;
+    padding: 11px 30px !important; transition: all .18s ease !important; }
+#st-save-btn:hover { background:#F0F4F9 !important; }
+#st-save-btn:disabled { opacity:.5 !important; }
+#st-status p { font-size:.88em !important; color:#2F6D4F !important; margin: 4px 0 0; }
+#st-sheet, .st-sheet { background:#fff; border:1px solid var(--rule); border-radius:12px;
+    padding: 28px 32px 24px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 14px 36px rgba(26,35,50,.05); }
+.st-sheet .st-head { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 18px; }
+.st-sheet .st-name { font-size: 1.3em; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+.st-sheet .st-sub { font-size: .8em; color:#7A8494; margin-top: 5px; }
+.st-sheet .st-k { font-size:.7em; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#7A8494; margin-bottom:6px; }
+.st-sheet .st-row { margin-bottom: 18px; }
+.st-sheet .st-v { font-size:.95em; color:#33404F; line-height:1.7; }
+.st-sheet .st-tag { display:inline-block; border-radius:5px; padding:3px 11px; font-size:.78em;
+    font-weight:700; border:1px solid currentColor; }
+.st-sheet .st-list { margin: 6px 0 0 18px; padding:0; }
+.st-sheet .st-list li { padding: 3px 0; font-size:.92em; color:#33404F; line-height:1.6; }
+.st-sheet .st-note { margin-top:4px; color:#8A93A0; font-size:.92em; }
+.st-sheet .st-self { margin-top:20px; padding:12px 16px; background: var(--soft);
+    border-left:3px solid var(--rule); border-radius:0 6px 6px 0; font-size:.87em; color:#5A6472; }
+.st-sheet .st-self b { display:block; color: var(--ink); font-size:.72em; letter-spacing:1.1px;
+    text-transform:uppercase; margin-bottom:4px; }
+.st-sheet .st-comment-text { font-size:1em; line-height:1.8; color: var(--ink); }
+.st-sheet .st-comment-text + .st-k { margin-top:22px; }
+
 @media (max-width: 760px) {
     .gradio-container { padding: 0 4px 40px !important; }
     #coach-header { padding: 22px 20px 18px; }
@@ -753,6 +1045,8 @@ def build_ui() -> gr.Blocks:
     with gr.Blocks(title="CoachAI") as demo:
         lang_state = gr.State("zh")
         qid_state = gr.State(questions[0]["id"] if questions else None)
+        # Phase 5: the last generated report comment, held for "save to records".
+        st_last_report = gr.State(None)
 
         # ---------- 顶部：品牌 + 语言切换 ----------
         with gr.Row(elem_id="coach-header"):
@@ -833,6 +1127,35 @@ def build_ui() -> gr.Blocks:
                                    elem_id="lp-gen-btn", size="lg")
                 lp_result = gr.HTML(render_plan_empty("zh"), elem_id="lp-result")
 
+            # -------------------------------------------------- Tab 3: 学生
+            with gr.Tab(I18N["zh"]["tab_students"], id="tab-students") as tab_students:
+                _st_students0 = store_db.list_students()
+                _st_choices0 = st_student_choices(_st_students0, "zh")
+
+                # ---------- 区块 A：追踪画像 ----------
+                with gr.Group(elem_classes="panel"):
+                    st_student = gr.Dropdown(
+                        choices=_st_choices0,
+                        value=_st_choices0[0][1] if _st_choices0 else None,
+                        label=I18N["zh"]["st_student_label"], elem_id="st-student")
+                    st_analyze_btn = gr.Button(I18N["zh"]["st_analyze_btn"], variant="primary",
+                                               elem_id="st-analyze-btn", size="lg")
+                    st_profile = gr.HTML(render_profile_empty("zh"), elem_id="st-profile")
+
+                # ---------- 区块 B：报告评语 ----------
+                with gr.Group(elem_classes="panel"):
+                    st_period = gr.Textbox(label=I18N["zh"]["st_period_label"],
+                                           value="Term 3 2026", placeholder=I18N["zh"]["st_period_ph"],
+                                           elem_id="st-period")
+                    st_notes = gr.Textbox(label=I18N["zh"]["st_notes_label"], lines=4,
+                                          placeholder=I18N["zh"]["st_notes_ph"], elem_id="st-notes")
+                    st_gen_btn = gr.Button(I18N["zh"]["st_gen_btn"], variant="primary",
+                                           elem_id="st-gen-btn", size="lg")
+                    st_comment = gr.HTML(render_report_empty("zh"), elem_id="st-comment")
+                    st_save_btn = gr.Button(I18N["zh"]["st_save_btn"], elem_id="st-save-btn",
+                                            interactive=False)
+                    st_status = gr.Markdown("", elem_id="st-status")
+
         # ---------- 语言切换 ----------
         def set_lang(lang_choice, cur_qid, lp_selected):
             lang = "en" if lang_choice == "EN" else "zh"
@@ -867,11 +1190,20 @@ def build_ui() -> gr.Blocks:
                 lp_ref: gr.update(label=L["lp_ref_label"], placeholder=L["lp_ref_ph"]),
                 lp_dur: gr.update(label=L["lp_dur_label"]),
                 lp_btn: gr.update(value=L["lp_gen_btn"]),
+                # ---- Phase 5: students tab ----
+                tab_students: gr.update(label=L["tab_students"]),
+                st_student: gr.update(label=L["st_student_label"], info=None),
+                st_analyze_btn: gr.update(value=L["st_analyze_btn"]),
+                st_period: gr.update(label=L["st_period_label"]),
+                st_notes: gr.update(label=L["st_notes_label"], placeholder=L["st_notes_ph"]),
+                st_gen_btn: gr.update(value=L["st_gen_btn"]),
+                st_save_btn: gr.update(value=L["st_save_btn"]),
             }
             order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
                      add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save,
                      tab_mark, tab_lesson, lp_year, lp_module, lp_hint, lp_dots, lp_counter,
-                     lp_ref, lp_dur, lp_btn)
+                     lp_ref, lp_dur, lp_btn, tab_students, st_student, st_analyze_btn,
+                     st_period, st_notes, st_gen_btn, st_save_btn)
             return [lang, *[updates[c] for c in order]]
 
         lang_radio.change(fn=set_lang,
@@ -880,7 +1212,8 @@ def build_ui() -> gr.Blocks:
                                    q_preview, title_md, add_accord, cq_note, cq_text, cq_marks,
                                    cq_criteria, cq_sample, cq_save, tab_mark, tab_lesson,
                                    lp_year, lp_module, lp_hint, lp_dots, lp_counter,
-                                   lp_ref, lp_dur, lp_btn])
+                                   lp_ref, lp_dur, lp_btn, tab_students, st_student,
+                                   st_analyze_btn, st_period, st_notes, st_gen_btn, st_save_btn])
 
         # ---------- 示例答案填充 ----------
         def on_q_change(qid, lang):
@@ -974,6 +1307,26 @@ def build_ui() -> gr.Blocks:
         lp_btn.click(fn=generate_plan_safe,
                      inputs=[lp_dots, lp_ref, lp_year, lp_dur, lp_module, lang_state],
                      outputs=[lp_result])
+
+        # ---------- 学生（Phase 5）：切换学生清空结果 / 分析 / 生成 / 保存 ----------
+        def on_student_change(student_id, lang):
+            """Switching student resets both result areas to their placeholders."""
+            return (render_profile_empty(lang), render_report_empty(lang), "", None,
+                    gr.update(interactive=False))
+
+        st_student.change(fn=on_student_change, inputs=[st_student, lang_state],
+                          outputs=[st_profile, st_comment, st_status, st_last_report,
+                                   st_save_btn])
+
+        st_analyze_btn.click(fn=st_analyze_safe, inputs=[st_student, lang_state],
+                             outputs=[st_profile])
+
+        st_gen_btn.click(fn=st_generate_safe,
+                         inputs=[st_student, st_period, st_notes, lang_state],
+                         outputs=[st_comment, st_last_report, st_save_btn])
+
+        st_save_btn.click(fn=st_save_safe, inputs=[st_last_report, lang_state],
+                          outputs=[st_status, st_save_btn])
 
     return demo
 
