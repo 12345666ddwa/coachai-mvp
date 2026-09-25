@@ -19,6 +19,7 @@ CoachAI — Gradio 批改前端
 
 from __future__ import annotations
 
+import html
 import json
 import sys
 from pathlib import Path
@@ -95,6 +96,31 @@ I18N = {
         "add_q_btn": "保存题目",
         "add_q_ok": "已保存：{qid}（可在题目下拉框中选用）",
         "add_q_err": "保存失败：题干、分值和评分标准均为必填。",
+        # ---- Phase 4: 教案规划 tab ----
+        "tab_mark": "批改",
+        "tab_lesson": "教案规划",
+        "lp_year_label": "年级",
+        "lp_module_label": "模块（focus area）",
+        "lp_dp_label": "课程内容点（dot points）",
+        "lp_dp_hint": "勾选本节课要覆盖的内容点，可多选；教案将逐条对齐。",
+        "lp_dp_count": "已勾选 {n} 个内容点",
+        "lp_ref_label": "参考材料（可选）",
+        "lp_ref_ph": "粘贴课件、教材段落或往年材料，教案将以其术语和内容为基准…",
+        "lp_dur_label": "课时长度（分钟）",
+        "lp_gen_btn": "生成教案",
+        "lp_empty": "勾选内容点后点击「生成教案」，结构化教案将显示在这里。",
+        "lp_err_no_dp": "请至少勾选一个内容点再生成教案。",
+        "lp_err_backend": "教案引擎尚未就绪：无法导入 agents.lesson_planner。",
+        "lp_err_unknown": "教案生成失败：",
+        "lp_r_objectives": "学习目标",
+        "lp_r_flow": "课堂流程",
+        "lp_r_assess": "评估点",
+        "lp_r_alignment": "大纲对齐",
+        "lp_draft": "草稿 · 教师修改后使用",
+        "lp_min_unit": "分钟",
+        "lp_meta_ref": "参考材料 {n} 字",
+        "lp_meta_rag_on": "已引用 NESA TSR 材料",
+        "lp_meta_rag_off": "未引用 TSR 材料",
     },
     "en": {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
@@ -149,6 +175,31 @@ I18N = {
         "add_q_btn": "Save question",
         "add_q_ok": "Saved as {qid} — now selectable in the question dropdown.",
         "add_q_err": "Could not save: question text, marks and marking criteria are required.",
+        # ---- Phase 4: lesson planner tab ----
+        "tab_mark": "Marking",
+        "tab_lesson": "Lesson planner",
+        "lp_year_label": "Year",
+        "lp_module_label": "Focus area (module)",
+        "lp_dp_label": "Syllabus dot points",
+        "lp_dp_hint": "Tick every dot point this lesson should cover (multiple allowed).",
+        "lp_dp_count": "Selected: {n}",
+        "lp_ref_label": "Reference material (optional)",
+        "lp_ref_ph": "Paste slides, textbook extracts or past materials; the plan follows their terminology and content…",
+        "lp_dur_label": "Lesson length (minutes)",
+        "lp_gen_btn": "Generate lesson plan",
+        "lp_empty": "Tick some dot points and click Generate. The structured lesson plan appears here.",
+        "lp_err_no_dp": "Tick at least one dot point before generating.",
+        "lp_err_backend": "Lesson planner engine not ready: cannot import agents.lesson_planner.",
+        "lp_err_unknown": "Lesson plan generation failed:",
+        "lp_r_objectives": "Learning objectives",
+        "lp_r_flow": "Lesson flow",
+        "lp_r_assess": "Assessment point",
+        "lp_r_alignment": "Syllabus alignment",
+        "lp_draft": "Draft · teacher edits before use",
+        "lp_min_unit": "min",
+        "lp_meta_ref": "Reference material: {n} chars",
+        "lp_meta_rag_on": "NESA TSR material cited",
+        "lp_meta_rag_off": "No TSR material cited",
     },
 }
 
@@ -352,10 +403,111 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
     h.append("</div>")
     return "".join(h)
 def err_card(title: str, hint: str = "") -> str:
-    html = f'<div class="coach-error">{title}'
+    html_ = f'<div class="coach-error">{title}'
     if hint:
-        html += f'<div class="hint">{hint}</div>'
-    return html + "</div>"
+        html_ += f'<div class="hint">{hint}</div>'
+    return html_ + "</div>"
+
+# ---------------------------------------------------------------- 教案规划（Phase 4）
+def lp_modules(year: str) -> list:
+    """Focus-area names for a year, straight from data/syllabus.json ([] on failure)."""
+    try:
+        from agents.lesson_planner import list_modules, load_syllabus  # noqa: PLC0415
+        return list_modules(load_syllabus(), year)
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] syllabus 加载失败: {e}", file=sys.stderr)
+        return []
+
+
+def lp_dot_point_choices(year: str, focus_area: str) -> list:
+    """(label, value) pairs for the checkbox group; value = dot point text."""
+    try:
+        from agents.lesson_planner import load_syllabus, module_dot_points  # noqa: PLC0415
+        return [(d["text"], d["text"]) for d in module_dot_points(load_syllabus(), year, focus_area)]
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] dot points 加载失败: {e}", file=sys.stderr)
+        return []
+
+
+def lp_selection_note(dot_points, lang: str) -> str:
+    """Tiny live counter under the checkbox group."""
+    L = I18N.get(lang, I18N["en"])
+    return L["lp_dp_count"].format(n=len(dot_points or []))
+
+
+def render_plan_empty(lang: str) -> str:
+    """Placeholder shown before the first generation."""
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["lp_empty"]}</div>'
+
+
+def render_plan_html(plan: dict, lang: str) -> str:
+    """Render a lesson plan dict as a paper-sheet style HTML block.
+
+    Plain editorial layout: title + rule, objectives list, flow rows with a
+    time column, assessment strip and the syllabus alignment list. No emoji.
+    """
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+
+    h = ['<div class="plan-sheet">']
+    # ---- head: title + year / module / duration / draft note
+    h.append('<div class="plan-head">')
+    h.append(f'<div class="plan-title">{esc(str(plan.get("title", "")).strip())}</div>')
+    sub_bits = [esc(str(plan.get("year", "")).strip()),
+                esc(str(plan.get("focus_area", "")).strip())]
+    sub_bits = [b for b in sub_bits if b]
+    duration = plan.get("duration_min")
+    if duration:
+        sub_bits.append(f'{esc(str(duration))} {L["lp_min_unit"]}')
+    sub_bits.append(L["lp_draft"])
+    h.append(f'<div class="plan-sub">{" · ".join(sub_bits)}</div>')
+    h.append('</div>')
+
+    # ---- objectives
+    objectives = [str(o).strip() for o in (plan.get("objectives") or []) if str(o).strip()]
+    if objectives:
+        h.append(f'<h4 class="plan-h">{L["lp_r_objectives"]}</h4><ul class="plan-objectives">')
+        h += [f"<li>{esc(o)}</li>" for o in objectives]
+        h.append('</ul>')
+
+    # ---- flow rows
+    flow = plan.get("flow") or []
+    if flow:
+        h.append(f'<h4 class="plan-h">{L["lp_r_flow"]}</h4><div class="flow">')
+        for seg in flow:
+            if not isinstance(seg, dict):
+                continue
+            t = esc(str(seg.get("time", "")).strip())
+            a = esc(str(seg.get("activity", "")).strip())
+            d = esc(str(seg.get("detail", "")).strip())
+            detail = f'<div class="d">{d}</div>' if d else ""
+            h.append('<div class="flow-row">'
+                     f'<div class="flow-time">{t}</div>'
+                     f'<div class="flow-body"><div class="t">{a}</div>{detail}</div>'
+                     '</div>')
+        h.append('</div>')
+
+    # ---- assessment strip
+    assess = str(plan.get("assessment", "")).strip()
+    if assess:
+        text = "" if assess.startswith("(") else esc(assess)
+        h.append(f'<div class="assess"><b>{L["lp_r_assess"]}</b>{text}</div>')
+
+    # ---- alignment (the ticked dot points)
+    alignment = [str(d).strip() for d in (plan.get("alignment") or []) if str(d).strip()]
+    if alignment:
+        h.append(f'<h4 class="plan-h">{L["lp_r_alignment"]}</h4><div class="aligned">')
+        h += [f'<div class="dp">{esc(d)}</div>' for d in alignment]
+        h.append('</div>')
+
+    # ---- provenance footer
+    gen = plan.get("generated_with") or {}
+    meta = [L["lp_meta_ref"].format(n=int(gen.get("reference_len") or 0)),
+            L["lp_meta_rag_on"] if gen.get("rag_used") else L["lp_meta_rag_off"]]
+    h.append(f'<div class="plan-meta">{" · ".join(meta)}</div>')
+
+    h.append('</div>')
+    return "".join(h)
 
 # ---------------------------------------------------------------- 业务逻辑
 def mark_answer_safe(qid: str, answer: str, lang: str):
@@ -404,6 +556,33 @@ def mark_answer_safe(qid: str, answer: str, lang: str):
         msg = res.get("message") or res.get("error") or "unknown error"
         return err_card(f'{L["status_error"]} — {msg}'), res
     return render_result_html(res, qid, lang), res
+
+# ---------------------------------------------------------------- 教案业务逻辑
+def generate_plan_safe(dot_points, reference_text, year, duration_min, focus_area, ui_lang):
+    """Generate one lesson plan; engine/LLM failures come back as friendly cards."""
+    L = I18N.get(ui_lang, I18N["en"])
+    dots = [str(d).strip() for d in (dot_points or []) if str(d).strip()]
+    if not dots:
+        return err_card(L["lp_err_no_dp"])
+    try:
+        from agents.lesson_planner import generate_lesson_plan, infer_lang  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import agents.lesson_planner 失败: {e}", file=sys.stderr)
+        return err_card(L["lp_err_backend"], str(e))
+
+    # The plan's language follows the reference material / dot points, not the
+    # UI chrome language (Chinese material in -> Chinese plan out).
+    plan_lang = infer_lang(reference_text or "", " ".join(dots))
+    try:
+        plan = generate_lesson_plan(
+            dots, reference_text=reference_text or "", year=year,
+            duration_min=int(duration_min or 60), focus_area=focus_area or "",
+            lang=plan_lang,
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] generate_lesson_plan 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["lp_err_unknown"]} {e}')
+    return render_plan_html(plan, plan_lang)
 
 # ---------------------------------------------------------------- Gradio 界面
 PAGE_CSS = """
@@ -464,13 +643,13 @@ body, .gradio-container { color: var(--ink); }
 #q-preview td { font-family: Consolas, Menlo, monospace; }
 
 /* ---------- buttons ---------- */
-#mark-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
+#mark-btn, #lp-gen-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
     border: none !important; border-radius: 8px !important; font-weight: 700 !important;
     padding: 15px 56px !important; font-size: 1.05em !important; letter-spacing: .3px;
     box-shadow: 0 4px 14px rgba(31,78,121,.28) !important; transition: all .18s ease !important; }
-#mark-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
-#mark-btn:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(31,78,121,.25) !important; }
-#mark-btn:disabled { opacity:.55 !important; }
+#mark-btn:hover, #lp-gen-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
+#mark-btn:active, #lp-gen-btn:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(31,78,121,.25) !important; }
+#mark-btn:disabled, #lp-gen-btn:disabled { opacity:.55 !important; }
 
 /* ---------- example radio ---------- */
 #ex-radio { display:flex; gap:10px; }
@@ -521,6 +700,43 @@ body, .gradio-container { color: var(--ink); }
     border-radius:8px; padding:16px 20px; font-weight:700; color:#8B1A1A; }
 .coach-error .hint { font-weight:400; color:#A05656; font-size:.88em; margin-top:6px; }
 
+/* ---------- lesson plan sheet (Phase 4) ---------- */
+#lp-result .plan-sheet { background:#fff; border:1px solid #C9C4B8; border-radius:12px;
+    padding: 30px 32px 24px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 16px 40px rgba(26,35,50,.06); }
+#lp-result .plan-head { border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+#lp-result .plan-title { font-size: 1.35em; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+#lp-result .plan-sub { font-size: .82em; color:#6B7684; margin-top: 5px; }
+#lp-result .plan-h { font-size:.72em; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#7A8494; margin: 24px 0 10px; }
+#lp-result ul.plan-objectives { list-style:none; margin:0; padding:0; }
+#lp-result ul.plan-objectives li { padding: 6px 0 6px 20px; position: relative; font-size: .95em;
+    color:#33404F; border-bottom: 1px solid #F0EDE5; }
+#lp-result ul.plan-objectives li::before { content:""; position:absolute; left:2px; top:14px;
+    width:5px; height:5px; border-radius:50%; background: var(--orange); }
+#lp-result .flow { border-top: 1px solid #E2DED4; }
+#lp-result .flow-row { display:grid; grid-template-columns: 92px 1fr; border-bottom: 1px solid #E2DED4; }
+#lp-result .flow-time { padding: 11px 12px 11px 0; font-size:.8em; font-weight:700; color: var(--blue);
+    border-right: 1px solid #E2DED4; }
+#lp-result .flow-body { padding: 11px 0 11px 16px; }
+#lp-result .flow-body .t { font-size:.95em; font-weight:600; color: var(--ink); }
+#lp-result .flow-body .d { font-size:.86em; color:#6B7684; margin-top: 3px; line-height:1.55; }
+#lp-result .assess { margin-top: 20px; padding: 12px 16px; background:#F0F4EF;
+    border-left: 3px solid #2F5D3A; font-size:.88em; color:#24422C; line-height:1.6; }
+#lp-result .assess b { display:block; font-size:.72em; letter-spacing:1.1px;
+    text-transform: uppercase; margin-bottom: 3px; color:#2F5D3A; }
+#lp-result .aligned { font-size:.84em; color:#4A5568; }
+#lp-result .aligned .dp { padding: 3px 0 3px 14px; position: relative; line-height:1.55; }
+#lp-result .aligned .dp::before { content:""; position:absolute; left:2px; top:12px;
+    width:4px; height:4px; border-radius:50%; background: var(--orange); }
+#lp-result .plan-meta { margin-top: 22px; padding-top: 12px; border-top: 1px dashed #E3DCD0;
+    font-size:.76em; color:#8A93A0; letter-spacing:.2px; }
+.plan-empty { background:#FBF9F5; border:1px dashed #DCD5C9; border-radius:10px;
+    padding: 26px 24px; color:#8A93A0; font-size:.92em; text-align:center; }
+#lp-dots { max-height: 420px; overflow-y: auto; }
+#lp-dots label { text-transform:none !important; letter-spacing:0 !important; font-weight:500 !important;
+    font-size:.92em !important; color:#33404F !important; line-height:1.5; }
+#lp-counter p { font-size:.82em !important; color:#8A93A0 !important; margin: 2px 0 0; }
+
 @media (max-width: 760px) {
     .gradio-container { padding: 0 4px 40px !important; }
     #coach-header { padding: 22px 20px 18px; }
@@ -550,43 +766,75 @@ def build_ui() -> gr.Blocks:
                 lang_radio = gr.Radio(["中文", "EN"], value="中文", show_label=False,
                                       interactive=True, elem_id="lang-select")
 
-        # ---------- 1. 选题 ----------
-        with gr.Group(elem_classes="panel"):
-            q_dropdown = gr.Dropdown(choices=q_choices(questions, "zh"), value=questions[0]["id"] if questions else None,
-                                     label=I18N["zh"]["q_label"], elem_id="q-drop")
-            q_preview = gr.Markdown(q_preview_md(questions[0]["id"], "zh") if questions else "", elem_id="q-preview")
+        # ================= 标签页：批改 / 教案规划 =================
+        with gr.Tabs(elem_id="coach-tabs"):
+            # -------------------------------------------------- Tab 1: 批改
+            with gr.Tab(I18N["zh"]["tab_mark"], id="tab-mark") as tab_mark:
+                # ---------- 1. 选题 ----------
+                with gr.Group(elem_classes="panel"):
+                    q_dropdown = gr.Dropdown(choices=q_choices(questions, "zh"), value=questions[0]["id"] if questions else None,
+                                             label=I18N["zh"]["q_label"], elem_id="q-drop")
+                    q_preview = gr.Markdown(q_preview_md(questions[0]["id"], "zh") if questions else "", elem_id="q-preview")
 
-        # ---------- 2. 答案 ----------
-        with gr.Group(elem_classes="panel"):
-            ans_box = gr.Textbox(label=I18N["zh"]["ans_label"], lines=7, placeholder=I18N["zh"]["ans_ph"],
-                                 elem_id="ans-box")
-            ex_radio = gr.Radio([I18N["zh"]["ex_good"], I18N["zh"]["ex_bad"]], label=I18N["zh"]["ex_label"],
-                                value=None, elem_id="ex-radio")
+                # ---------- 2. 答案 ----------
+                with gr.Group(elem_classes="panel"):
+                    ans_box = gr.Textbox(label=I18N["zh"]["ans_label"], lines=7, placeholder=I18N["zh"]["ans_ph"],
+                                         elem_id="ans-box")
+                    ex_radio = gr.Radio([I18N["zh"]["ex_good"], I18N["zh"]["ex_bad"]], label=I18N["zh"]["ex_label"],
+                                        value=None, elem_id="ex-radio")
 
-        # ---------- 3. 批改 ----------
-        mark_btn = gr.Button(I18N["zh"]["mark_btn"], variant="primary", elem_id="mark-btn", size="lg")
-        result_md = gr.Markdown()
-        raw_accord = gr.Accordion(I18N["zh"]["raw_label"], open=False, elem_classes="panel")
-        with raw_accord:
-            raw_json = gr.JSON(value=None, show_label=False)
+                # ---------- 3. 批改 ----------
+                mark_btn = gr.Button(I18N["zh"]["mark_btn"], variant="primary", elem_id="mark-btn", size="lg")
+                result_md = gr.Markdown()
+                raw_accord = gr.Accordion(I18N["zh"]["raw_label"], open=False, elem_classes="panel")
+                with raw_accord:
+                    raw_json = gr.JSON(value=None, show_label=False)
 
-        # ---------- 4. 自建题目（老师录入，默认收起） ----------
-        with gr.Accordion(I18N["zh"]["add_q_label"], open=False,
-                          elem_classes="panel", elem_id="add-q") as add_accord:
-            cq_note = gr.Markdown(I18N["zh"]["add_q_note"], elem_id="add-q-note")
-            cq_text = gr.Textbox(label=I18N["zh"]["add_q_text_label"], lines=6,
-                                 placeholder=I18N["zh"]["add_q_text_ph"])
-            cq_marks = gr.Number(label=I18N["zh"]["add_q_marks_label"], value=None,
-                                 precision=0, minimum=1, maximum=100)
-            cq_criteria = gr.Textbox(label=I18N["zh"]["add_q_criteria_label"], lines=5,
-                                     placeholder=I18N["zh"]["add_q_criteria_ph"])
-            cq_sample = gr.Textbox(label=I18N["zh"]["add_q_sample_label"], lines=3,
-                                   placeholder=I18N["zh"]["add_q_sample_ph"])
-            cq_save = gr.Button(I18N["zh"]["add_q_btn"], elem_id="add-q-btn")
-            cq_status = gr.Markdown("", elem_id="add-q-status")
+                # ---------- 4. 自建题目（老师录入，默认收起） ----------
+                with gr.Accordion(I18N["zh"]["add_q_label"], open=False,
+                                  elem_classes="panel", elem_id="add-q") as add_accord:
+                    cq_note = gr.Markdown(I18N["zh"]["add_q_note"], elem_id="add-q-note")
+                    cq_text = gr.Textbox(label=I18N["zh"]["add_q_text_label"], lines=6,
+                                         placeholder=I18N["zh"]["add_q_text_ph"])
+                    cq_marks = gr.Number(label=I18N["zh"]["add_q_marks_label"], value=None,
+                                         precision=0, minimum=1, maximum=100)
+                    cq_criteria = gr.Textbox(label=I18N["zh"]["add_q_criteria_label"], lines=5,
+                                             placeholder=I18N["zh"]["add_q_criteria_ph"])
+                    cq_sample = gr.Textbox(label=I18N["zh"]["add_q_sample_label"], lines=3,
+                                           placeholder=I18N["zh"]["add_q_sample_ph"])
+                    cq_save = gr.Button(I18N["zh"]["add_q_btn"], elem_id="add-q-btn")
+                    cq_status = gr.Markdown("", elem_id="add-q-status")
+
+            # -------------------------------------------------- Tab 2: 教案规划
+            with gr.Tab(I18N["zh"]["tab_lesson"], id="tab-lesson") as tab_lesson:
+                _lp_year0 = "Year 11"
+                _lp_mods0 = lp_modules(_lp_year0)
+                _lp_mod0 = _lp_mods0[0] if _lp_mods0 else None
+                _lp_dps0 = lp_dot_point_choices(_lp_year0, _lp_mod0) if _lp_mod0 else []
+
+                with gr.Group(elem_classes="panel"):
+                    lp_year = gr.Radio(["Year 11", "Year 12"], value=_lp_year0,
+                                       label=I18N["zh"]["lp_year_label"], elem_id="lp-year")
+                    lp_module = gr.Dropdown(choices=_lp_mods0, value=_lp_mod0,
+                                            label=I18N["zh"]["lp_module_label"], elem_id="lp-module")
+                    lp_hint = gr.Markdown(I18N["zh"]["lp_dp_hint"], elem_id="lp-hint")
+                    lp_dots = gr.CheckboxGroup(choices=_lp_dps0, value=[],
+                                               label=I18N["zh"]["lp_dp_label"],
+                                               show_select_all=True, elem_id="lp-dots")
+                    lp_counter = gr.Markdown(I18N["zh"]["lp_dp_count"].format(n=0), elem_id="lp-counter")
+
+                with gr.Group(elem_classes="panel"):
+                    lp_ref = gr.Textbox(label=I18N["zh"]["lp_ref_label"], lines=6,
+                                        placeholder=I18N["zh"]["lp_ref_ph"], elem_id="lp-ref")
+                    lp_dur = gr.Slider(minimum=30, maximum=120, step=5, value=60,
+                                       label=I18N["zh"]["lp_dur_label"], elem_id="lp-dur")
+
+                lp_btn = gr.Button(I18N["zh"]["lp_gen_btn"], variant="primary",
+                                   elem_id="lp-gen-btn", size="lg")
+                lp_result = gr.HTML(render_plan_empty("zh"), elem_id="lp-result")
 
         # ---------- 语言切换 ----------
-        def set_lang(lang_choice, cur_qid):
+        def set_lang(lang_choice, cur_qid, lp_selected):
             lang = "en" if lang_choice == "EN" else "zh"
             L = I18N[lang]
             updates = {
@@ -608,16 +856,31 @@ def build_ui() -> gr.Blocks:
                 cq_criteria: gr.update(label=L["add_q_criteria_label"], placeholder=L["add_q_criteria_ph"]),
                 cq_sample: gr.update(label=L["add_q_sample_label"], placeholder=L["add_q_sample_ph"]),
                 cq_save: gr.update(value=L["add_q_btn"]),
+                # ---- Phase 4: tabs + lesson planner ----
+                tab_mark: gr.update(label=L["tab_mark"]),
+                tab_lesson: gr.update(label=L["tab_lesson"]),
+                lp_year: gr.update(label=L["lp_year_label"]),
+                lp_module: gr.update(label=L["lp_module_label"]),
+                lp_hint: gr.update(value=L["lp_dp_hint"]),
+                lp_dots: gr.update(label=L["lp_dp_label"]),
+                lp_counter: gr.update(value=L["lp_dp_count"].format(n=len(lp_selected or []))),
+                lp_ref: gr.update(label=L["lp_ref_label"], placeholder=L["lp_ref_ph"]),
+                lp_dur: gr.update(label=L["lp_dur_label"]),
+                lp_btn: gr.update(value=L["lp_gen_btn"]),
             }
             order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
-                     add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save)
+                     add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save,
+                     tab_mark, tab_lesson, lp_year, lp_module, lp_hint, lp_dots, lp_counter,
+                     lp_ref, lp_dur, lp_btn)
             return [lang, *[updates[c] for c in order]]
 
         lang_radio.change(fn=set_lang,
-                          inputs=[lang_radio, qid_state],
+                          inputs=[lang_radio, qid_state, lp_dots],
                           outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord,
                                    q_preview, title_md, add_accord, cq_note, cq_text, cq_marks,
-                                   cq_criteria, cq_sample, cq_save])
+                                   cq_criteria, cq_sample, cq_save, tab_mark, tab_lesson,
+                                   lp_year, lp_module, lp_hint, lp_dots, lp_counter,
+                                   lp_ref, lp_dur, lp_btn])
 
         # ---------- 示例答案填充 ----------
         def on_q_change(qid, lang):
@@ -677,14 +940,40 @@ def build_ui() -> gr.Blocks:
 
         # ---------- 批改 ----------
         def on_mark(qid, answer, lang):
-            html, raw = mark_answer_safe(qid, answer, lang)
-            return html, raw
+            html_out, raw = mark_answer_safe(qid, answer, lang)
+            return html_out, raw
 
         mark_btn.click(fn=on_mark, inputs=[qid_state, ans_box, lang_state],
                        outputs=[result_md, raw_json])
 
         q_dropdown.change(fn=on_q_change, inputs=[q_dropdown, lang_state],
                           outputs=[qid_state, q_dropdown, q_preview])
+
+        # ---------- 教案规划：联动 + 生成 ----------
+        def on_lp_year_change(year, lang):
+            """Year change -> refresh module dropdown and dot point checkboxes."""
+            mods = lp_modules(year)
+            first = mods[0] if mods else None
+            dps = lp_dot_point_choices(year, first) if first else []
+            return (gr.update(choices=mods, value=first),
+                    gr.update(choices=dps, value=[]),
+                    lp_selection_note([], lang))
+
+        def on_lp_module_change(year, focus_area, lang):
+            """Module change -> refresh dot point checkboxes (selection cleared)."""
+            return (gr.update(choices=lp_dot_point_choices(year, focus_area), value=[]),
+                    lp_selection_note([], lang))
+
+        lp_year.change(fn=on_lp_year_change, inputs=[lp_year, lang_state],
+                       outputs=[lp_module, lp_dots, lp_counter])
+        lp_module.change(fn=on_lp_module_change, inputs=[lp_year, lp_module, lang_state],
+                         outputs=[lp_dots, lp_counter])
+        lp_dots.change(fn=lp_selection_note, inputs=[lp_dots, lang_state],
+                       outputs=[lp_counter])
+
+        lp_btn.click(fn=generate_plan_safe,
+                     inputs=[lp_dots, lp_ref, lp_year, lp_dur, lp_module, lang_state],
+                     outputs=[lp_result])
 
     return demo
 
