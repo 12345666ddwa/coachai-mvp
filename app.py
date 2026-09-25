@@ -191,6 +191,39 @@ I18N = {
         "cp_no_sources": "本次未检索到 NESA 材料，回答已注明材料未涵盖的部分。",
         "cp_note_head": "小提示",
         "cp_err_no_q": "请先输入问题再提问。",
+        # ---- Phase 6b: 课堂分析 tab（教师端） ----
+        "tab_review": "课堂分析",
+        "tr_year_label": "年级",
+        "tr_module_label": "模块（focus area，可选）",
+        "tr_audio_label": "课堂录音（mp3 / m4a / wav）",
+        "tr_transcribe_btn": "转录并分析",
+        "tr_text_label": "或直接粘贴转录文本",
+        "tr_text_ph": "把课堂转录文本粘贴到这里，直接分析（跳过转录）…",
+        "tr_analyze_btn": "分析转录",
+        "tr_empty": "上传课堂录音点击「转录并分析」，或粘贴转录文本点击「分析转录」，分析结果将显示在这里。",
+        "tr_err_no_input": "请先上传音频文件或粘贴转录文本。",
+        "tr_err_no_transcript": "转录未得到有效文本（可能是空白录音），请检查录音或改用粘贴文本。",
+        "tr_err_backend": "课堂分析引擎尚未就绪：无法导入 tools.transcript_analyzer。",
+        "tr_err_unknown": "分析失败：",
+        "tr_err_transcribe": "转录失败：",
+        "tr_status_transcribed": "转录完成：语言 {lang} · {n} 字符",
+        "tr_status_pasted": "已读取粘贴文本：{n} 字符",
+        "tr_sheet_title": "课堂分析",
+        "tr_count_note": "{n} 个内容点",
+        "tr_coverage_stat": "已覆盖 {n} / {total}",
+        "tr_meta_chars": "转录 {n} 字符",
+        "tr_meta_lang": "语言 {lang}",
+        "tr_meta_dur": "{n} 秒",
+        "tr_draft": "草稿 · 教师确认后使用",
+        "tr_summary_head": "课的内容概述",
+        "tr_coverage_head": "大纲覆盖检查",
+        "tr_covered": "已覆盖",
+        "tr_not_covered": "未覆盖",
+        "tr_evidence_head": "依据",
+        "tr_no_evidence": "未提供转录依据",
+        "tr_strengths_head": "教学亮点",
+        "tr_missed_head": "遗漏 / 薄弱点",
+        "tr_recos_head": "教学建议",
     },
     "en": {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
@@ -337,6 +370,39 @@ I18N = {
         "cp_no_sources": "No NESA material retrieved for this question; the answer states what is not covered.",
         "cp_note_head": "Tip",
         "cp_err_no_q": "Please type your question first.",
+        # ---- Phase 6b: lesson review tab (teacher side) ----
+        "tab_review": "Lesson review",
+        "tr_year_label": "Year",
+        "tr_module_label": "Focus area (module, optional)",
+        "tr_audio_label": "Lesson recording (mp3 / m4a / wav)",
+        "tr_transcribe_btn": "Transcribe and analyse",
+        "tr_text_label": "Or paste a transcript",
+        "tr_text_ph": "Paste the lesson transcript here to analyse it directly (skips transcription)…",
+        "tr_analyze_btn": "Analyse transcript",
+        "tr_empty": "Upload a recording and click Transcribe and analyse, or paste a transcript and click Analyse transcript. The review appears here.",
+        "tr_err_no_input": "Upload an audio file or paste a transcript first.",
+        "tr_err_no_transcript": "Transcription produced no usable text (the recording may be silent). Check the file or paste a transcript instead.",
+        "tr_err_backend": "Lesson review engine not ready: cannot import tools.transcript_analyzer.",
+        "tr_err_unknown": "Analysis failed:",
+        "tr_err_transcribe": "Transcription failed:",
+        "tr_status_transcribed": "Transcribed: language {lang} · {n} chars",
+        "tr_status_pasted": "Pasted transcript read: {n} chars",
+        "tr_sheet_title": "Lesson review",
+        "tr_count_note": "{n} dot points",
+        "tr_coverage_stat": "Covered {n} / {total}",
+        "tr_meta_chars": "Transcript: {n} chars",
+        "tr_meta_lang": "language {lang}",
+        "tr_meta_dur": "{n} s",
+        "tr_draft": "Draft · teacher confirms before use",
+        "tr_summary_head": "Lesson summary",
+        "tr_coverage_head": "Syllabus coverage",
+        "tr_covered": "Covered",
+        "tr_not_covered": "Not covered",
+        "tr_evidence_head": "Evidence",
+        "tr_no_evidence": "No transcript evidence quoted",
+        "tr_strengths_head": "Strengths",
+        "tr_missed_head": "Missed or thin",
+        "tr_recos_head": "Recommendations",
     },
 }
 
@@ -1033,6 +1099,145 @@ def answer_question_safe(student_question, context_note, year, ui_lang):
         return err_card(f'{L["cp_err_unknown"]} empty answer')
     return render_answer_html(result, ui_lang)
 
+# ---------------------------------------------------------------- 课堂分析（Phase 6b）
+def tr_module_choices(year: str) -> list:
+    """(label, value) pairs for the review-tab module filter; "" = whole year."""
+    return [("全部模块 / All modules", "")] + [(m, m) for m in lp_modules(year)]
+
+
+def render_review_empty(lang: str) -> str:
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["tr_empty"]}</div>'
+
+
+def render_review_html(review: dict, lang: str, meta: dict | None = None) -> str:
+    """Render a lesson review as a paper-sheet card (no emoji, no markdown).
+
+    Sections: lesson summary, syllabus coverage (per dot point badge + the
+    transcript evidence), teaching strengths, missed or thin content, and
+    next-lesson recommendations.
+    """
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+    meta = meta or {}
+
+    coverage = [c for c in (review.get("coverage") or []) if isinstance(c, dict)]
+    covered_n = sum(1 for c in coverage if c.get("covered"))
+
+    h = ['<div class="tr-sheet">']
+    h.append('<div class="tr-head">')
+    h.append(f'<div class="tr-title">{esc(L["tr_sheet_title"])}</div>')
+    sub_bits = []
+    if str(meta.get("year") or "").strip():
+        sub_bits.append(esc(str(meta["year"]).strip()))
+    if str(meta.get("focus_area") or "").strip():
+        sub_bits.append(esc(str(meta["focus_area"]).strip()))
+    if coverage:
+        sub_bits.append(esc(L["tr_count_note"].format(n=len(coverage))))
+    if meta.get("chars"):
+        sub_bits.append(esc(L["tr_meta_chars"].format(n=int(meta["chars"]))))
+    if meta.get("language"):
+        sub_bits.append(esc(L["tr_meta_lang"].format(lang=str(meta["language"]).upper())))
+    if meta.get("duration_s"):
+        sub_bits.append(esc(L["tr_meta_dur"].format(n=round(float(meta["duration_s"])))))
+    sub_bits.append(esc(L["tr_draft"]))
+    h.append(f'<div class="tr-sub">{" · ".join(sub_bits)}</div>')
+    h.append('</div>')
+
+    summary = str(review.get("lesson_summary") or "").strip()
+    if summary:
+        h.append(f'<div class="tr-k">{esc(L["tr_summary_head"])}</div>'
+                 f'<div class="tr-summary">{esc(summary).replace(chr(10), "<br>")}</div>')
+
+    if coverage:
+        h.append('<div class="tr-cov-head">'
+                 f'<span class="tr-k" style="margin:0">{esc(L["tr_coverage_head"])}</span>'
+                 f'<span class="tr-cov-stat">'
+                 f'{esc(L["tr_coverage_stat"].format(n=covered_n, total=len(coverage)))}</span>'
+                 '</div>')
+        h.append('<div class="tr-cov">')
+        for c in coverage:
+            dp = esc(str(c.get("dot_point", "")).strip())
+            covered = bool(c.get("covered"))
+            badge = L["tr_covered"] if covered else L["tr_not_covered"]
+            cls = "covered" if covered else "miss"
+            evidence = str(c.get("evidence", "")).strip()
+            ev_html = (esc(evidence).replace(chr(10), "<br>") if evidence
+                       else esc(L["tr_no_evidence"]))
+            h.append(f'<div class="tr-cov-row {cls}">'
+                     f'<div class="tr-cov-top"><span class="tr-badge">{esc(badge)}</span>'
+                     f'<span class="tr-cov-dp">{dp}</span></div>'
+                     f'<div class="tr-cov-ev"><b>{esc(L["tr_evidence_head"])}</b>{ev_html}</div>'
+                     '</div>')
+        h.append('</div>')
+
+    for key, head_key in (("strengths", "tr_strengths_head"),
+                          ("missed", "tr_missed_head"),
+                          ("recommendations", "tr_recos_head")):
+        items = [str(x).strip() for x in (review.get(key) or []) if str(x).strip()]
+        if not items:
+            continue
+        h.append(f'<div class="tr-k">{esc(L[head_key])}</div><ul class="tr-list">')
+        h += [f"<li>{esc(x)}</li>" for x in items]
+        h.append('</ul>')
+
+    h.append('</div>')
+    return "".join(h)
+
+
+def _tr_analyze_safe(transcript_text, year, focus_area, lang, meta=None):
+    """Run one lesson review; engine/LLM failures come back as friendly cards."""
+    L = I18N.get(lang, I18N["en"])
+    try:
+        from tools.transcript_analyzer import analyze_lesson  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import tools.transcript_analyzer 失败: {e}", file=sys.stderr)
+        return err_card(L["tr_err_backend"], str(e))
+    try:
+        review = analyze_lesson(transcript_text, year=year,
+                                focus_area=focus_area or "", lang=lang)
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] analyze_lesson 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["tr_err_unknown"]} {e}')
+    if not isinstance(review, dict) or not review.get("coverage"):
+        return err_card(f'{L["tr_err_unknown"]} empty review')
+    return render_review_html(review, lang, meta=meta)
+
+
+def tr_transcribe_safe(audio_path, year, focus_area, lang):
+    """Transcribe an uploaded recording, then analyse it. Returns (html, status)."""
+    L = I18N.get(lang, I18N["en"])
+    if not audio_path:
+        return err_card(L["tr_err_no_input"]), ""
+    try:
+        from tools.transcript_analyzer import transcribe_audio  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import tools.transcript_analyzer 失败: {e}", file=sys.stderr)
+        return err_card(L["tr_err_backend"], str(e)), ""
+    try:
+        tr = transcribe_audio(audio_path)
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] transcribe_audio 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["tr_err_transcribe"]} {e}'), ""
+    text = str(tr.get("transcript") or "").strip()
+    if not text:
+        return err_card(L["tr_err_no_transcript"]), ""
+    status = L["tr_status_transcribed"].format(
+        n=len(text), lang=str(tr.get("language") or "?").upper())
+    meta = {"year": year, "focus_area": focus_area, "chars": len(text),
+            "language": tr.get("language"), "duration_s": tr.get("duration_s")}
+    return _tr_analyze_safe(text, year, focus_area, lang, meta=meta), status
+
+
+def tr_analyze_safe(transcript_text, year, focus_area, lang):
+    """Analyse a pasted transcript (skips transcription). Returns (html, status)."""
+    L = I18N.get(lang, I18N["en"])
+    text = (transcript_text or "").strip()
+    if not text:
+        return err_card(L["tr_err_no_input"]), ""
+    status = L["tr_status_pasted"].format(n=len(text))
+    meta = {"year": year, "focus_area": focus_area, "chars": len(text)}
+    return _tr_analyze_safe(text, year, focus_area, lang, meta=meta), status
+
 # ---------------------------------------------------------------- Gradio 界面
 PAGE_CSS = """
 :root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#143A5C;
@@ -1263,6 +1468,44 @@ body, .gradio-container { color: var(--ink); }
     font-weight:500 !important; font-size:.92em !important; color:#33404F !important; line-height:1.5; }
 #cp-counter p { font-size:.82em !important; color:#8A93A0 !important; margin: 2px 0 0; }
 
+/* ---------- lesson review tab (Phase 6b) ---------- */
+#tr-transcribe-btn, #tr-analyze-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
+    border: none !important; border-radius: 8px !important; font-weight: 700 !important;
+    padding: 15px 56px !important; font-size: 1.05em !important; letter-spacing: .3px;
+    box-shadow: 0 4px 14px rgba(31,78,121,.28) !important; transition: all .18s ease !important; }
+#tr-transcribe-btn:hover, #tr-analyze-btn:hover { transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
+#tr-transcribe-btn:active, #tr-analyze-btn:active { transform: translateY(0); }
+#tr-transcribe-btn:disabled, #tr-analyze-btn:disabled { opacity:.55 !important; }
+#tr-status p { font-size:.88em !important; color:#5A6472 !important; margin: 4px 0 0; }
+.tr-sheet { background:#fff; border:1px solid var(--rule); border-radius:12px;
+    padding: 28px 32px 24px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 14px 36px rgba(26,35,50,.05); }
+.tr-sheet .tr-head { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 16px; }
+.tr-sheet .tr-title { font-size: 1.3em; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+.tr-sheet .tr-sub { font-size: .8em; color:#7A8494; margin-top: 5px; }
+.tr-sheet .tr-k { font-size:.7em; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#7A8494; margin: 14px 0 5px; }
+.tr-sheet .tr-summary { font-size:.95em; line-height:1.75; color:#33404F; }
+.tr-sheet .tr-cov-head { display:flex; align-items:baseline; justify-content:space-between;
+    gap:12px; margin: 20px 0 8px; }
+.tr-sheet .tr-cov-stat { font-size:.78em; font-weight:700; color: var(--blue); }
+.tr-sheet .tr-cov-row { border:1px solid #EFEAE0; border-left-width:4px; border-radius:6px;
+    padding: 10px 14px; margin-top: 8px; background:#FBF9F5; }
+.tr-sheet .tr-cov-row.covered { border-left-color: #2F6D4F; }
+.tr-sheet .tr-cov-row.miss { border-left-color: #B03A2E; }
+.tr-sheet .tr-cov-top { display:flex; gap:10px; align-items:flex-start; }
+.tr-sheet .tr-badge { flex-shrink:0; font-size:.72em; font-weight:800; letter-spacing:.4px;
+    border:1px solid currentColor; border-radius:5px; padding:2px 9px; }
+.tr-sheet .tr-cov-row.covered .tr-badge { color:#2F6D4F; }
+.tr-sheet .tr-cov-row.miss .tr-badge { color:#B03A2E; }
+.tr-sheet .tr-cov-dp { font-size:.92em; color: var(--ink); line-height:1.55; }
+.tr-sheet .tr-cov-ev { margin-top:7px; font-size:.85em; color:#6B7684; line-height:1.6;
+    border-top:1px dashed #E3DCD0; padding-top:7px; }
+.tr-sheet .tr-cov-ev b { font-size:.72em; letter-spacing:1px; text-transform:uppercase;
+    color:#7A8494; margin-right:8px; }
+.tr-sheet ul.tr-list { margin: 4px 0 0 18px; padding:0; }
+.tr-sheet ul.tr-list li { padding: 3px 0; font-size:.92em; color:#33404F; line-height:1.65; }
+
 @media (max-width: 760px) {
     .gradio-container { padding: 0 4px 40px !important; }
     #coach-header { padding: 22px 20px 18px; }
@@ -1429,6 +1672,39 @@ def build_ui() -> gr.Blocks:
                                        elem_id="cp-ask-btn", size="lg")
                 cp_answer = gr.HTML(render_answer_empty("zh"), elem_id="cp-answer")
 
+            # -------------------------------------------------- Tab 5: 课堂分析
+            with gr.Tab(I18N["zh"]["tab_review"], id="tab-review") as tab_review:
+                _tr_year0 = "Year 11"
+
+                # ---------- 区块 A：分析范围（年级 + 可选模块） ----------
+                with gr.Group(elem_classes="panel"):
+                    tr_year = gr.Radio(["Year 11", "Year 12"], value=_tr_year0,
+                                       label=I18N["zh"]["tr_year_label"], elem_id="tr-year")
+                    tr_module = gr.Dropdown(choices=tr_module_choices(_tr_year0), value="",
+                                            label=I18N["zh"]["tr_module_label"],
+                                            elem_id="tr-module")
+
+                # ---------- 区块 B：上传录音 -> 转录并分析 ----------
+                with gr.Group(elem_classes="panel"):
+                    tr_audio = gr.Audio(sources=["upload"], type="filepath",
+                                        label=I18N["zh"]["tr_audio_label"],
+                                        elem_id="tr-audio")
+                    tr_transcribe_btn = gr.Button(I18N["zh"]["tr_transcribe_btn"],
+                                                  variant="primary",
+                                                  elem_id="tr-transcribe-btn", size="lg")
+
+                # ---------- 区块 C：粘贴转录文本 -> 直接分析 ----------
+                with gr.Group(elem_classes="panel"):
+                    tr_text = gr.Textbox(label=I18N["zh"]["tr_text_label"], lines=8,
+                                         placeholder=I18N["zh"]["tr_text_ph"],
+                                         elem_id="tr-text")
+                    tr_analyze_btn = gr.Button(I18N["zh"]["tr_analyze_btn"],
+                                               variant="primary",
+                                               elem_id="tr-analyze-btn", size="lg")
+
+                tr_status = gr.Markdown("", elem_id="tr-status")
+                tr_result = gr.HTML(render_review_empty("zh"), elem_id="tr-result")
+
         # ---------- 语言切换 ----------
         def set_lang(lang_choice, cur_qid, lp_selected, cp_selected):
             lang = "en" if lang_choice == "EN" else "zh"
@@ -1483,6 +1759,14 @@ def build_ui() -> gr.Blocks:
                 cp_q_box: gr.update(label=L["cp_q_label"], placeholder=L["cp_q_ph"]),
                 cp_context: gr.update(label=L["cp_context_label"], placeholder=L["cp_context_ph"]),
                 cp_ask_btn: gr.update(value=L["cp_ask_btn"]),
+                # ---- Phase 6b: lesson review tab ----
+                tab_review: gr.update(label=L["tab_review"]),
+                tr_year: gr.update(label=L["tr_year_label"]),
+                tr_module: gr.update(label=L["tr_module_label"], info=None),
+                tr_audio: gr.update(label=L["tr_audio_label"]),
+                tr_transcribe_btn: gr.update(value=L["tr_transcribe_btn"]),
+                tr_text: gr.update(label=L["tr_text_label"], placeholder=L["tr_text_ph"]),
+                tr_analyze_btn: gr.update(value=L["tr_analyze_btn"]),
             }
             order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
                      add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save,
@@ -1490,7 +1774,9 @@ def build_ui() -> gr.Blocks:
                      lp_ref, lp_dur, lp_btn, tab_students, st_student, st_analyze_btn,
                      st_period, st_notes, st_gen_btn, st_save_btn,
                      tab_practice, cp_year, cp_module, cp_hint, cp_dots, cp_counter,
-                     cp_count, cp_gen_btn, cp_q_box, cp_context, cp_ask_btn)
+                     cp_count, cp_gen_btn, cp_q_box, cp_context, cp_ask_btn,
+                     tab_review, tr_year, tr_module, tr_audio, tr_transcribe_btn,
+                     tr_text, tr_analyze_btn)
             return [lang, *[updates[c] for c in order]]
 
         lang_radio.change(fn=set_lang,
@@ -1503,7 +1789,8 @@ def build_ui() -> gr.Blocks:
                                    st_analyze_btn, st_period, st_notes, st_gen_btn, st_save_btn,
                                    tab_practice, cp_year, cp_module, cp_hint, cp_dots,
                                    cp_counter, cp_count, cp_gen_btn, cp_q_box, cp_context,
-                                   cp_ask_btn])
+                                   cp_ask_btn, tab_review, tr_year, tr_module, tr_audio,
+                                   tr_transcribe_btn, tr_text, tr_analyze_btn])
 
         # ---------- 示例答案填充 ----------
         def on_q_change(qid, lang):
@@ -1646,6 +1933,21 @@ def build_ui() -> gr.Blocks:
         cp_ask_btn.click(fn=answer_question_safe,
                          inputs=[cp_q_box, cp_context, cp_year, lang_state],
                          outputs=[cp_answer])
+
+        # ---------- 课堂分析（Phase 6b）：模块联动 + 转录分析 / 粘贴分析 ----------
+        def on_tr_year_change(year, lang):
+            """Year change -> refresh the module filter (whole year by default)."""
+            return gr.update(choices=tr_module_choices(year), value="")
+
+        tr_year.change(fn=on_tr_year_change, inputs=[tr_year, lang_state],
+                       outputs=[tr_module])
+
+        tr_transcribe_btn.click(fn=tr_transcribe_safe,
+                                inputs=[tr_audio, tr_year, tr_module, lang_state],
+                                outputs=[tr_result, tr_status])
+        tr_analyze_btn.click(fn=tr_analyze_safe,
+                             inputs=[tr_text, tr_year, tr_module, lang_state],
+                             outputs=[tr_result, tr_status])
 
     return demo
 
