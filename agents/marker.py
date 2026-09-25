@@ -29,6 +29,12 @@ from agents.models import complete  # noqa: E402
 SYSTEM_ROLE = (
     "You are an experienced HSC Enterprise Computing teacher and a senior marker "
     "familiar with NSW Education Standards Authority (NESA) marking guidelines. "
+    "You produce a DRAFT evaluation for teacher review: treat every mark you "
+    "award as a SUGGESTED mark that a teacher will confirm or adjust, never a "
+    "final, authoritative judgement. Use measured, evidence-based wording — say "
+    "what the response does or does not yet evidence (e.g. 'the response does "
+    "not yet evidence ...') instead of absolute claims about the student or "
+    "their work (e.g. 'the student is wrong'). "
     "You grade extended-response answers strictly against the provided rubric "
     "mark bands. You reward precise syllabus terminology, correct use of concepts "
     "and answers that actually address every verb/requirement in the question "
@@ -172,7 +178,8 @@ def build_marker_prompt(
         lines.append(str(critique).strip())
 
     lines.append(
-        "\nGrade the student answer now. Return ONLY the JSON object."
+        "\nProduce the suggested (draft) evaluation for teacher confirmation now. "
+        "Return ONLY the JSON object."
     )
     return system, "\n\n".join(lines)
 

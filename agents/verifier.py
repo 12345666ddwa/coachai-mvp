@@ -41,7 +41,10 @@ QA_ROLE = (
     "the marker's mark is consistent with its own justification and the rubric "
     "bands; 4) rewrite feedback so it is accurate and useful for the student. "
     "You approve ONLY verdicts you genuinely agree with after re-reading the "
-    "rubric and the retrieved syllabus material. You return ONLY a JSON object."
+    "rubric and the retrieved syllabus material. Remember this is a draft "
+    "evaluation for teacher confirmation: keep your wording measured and "
+    "evidence-based (what the response does or does not yet evidence), never "
+    "absolute. You return ONLY a JSON object."
 )
 
 

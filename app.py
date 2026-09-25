@@ -26,6 +26,11 @@ from pathlib import Path
 import gradio as gr
 from gradio.themes import Default as GradioDefault, colors as gradio_colors
 
+# Phase 3 privacy layer: every student answer is scrubbed of PII before it
+# reaches the marking engine (and its LLM calls); results are re-identified
+# only locally for display.
+from privacy import anonymizer
+
 BASE_DIR = Path(__file__).resolve().parent
 QUESTIONS_PATH = BASE_DIR / "data" / "questions.json"
 GOLDEN_PATH = BASE_DIR / "tests" / "golden_set.json"
@@ -70,6 +75,7 @@ I18N = {
         "raw_label": "原始返回（JSON）",
         "marks_unit": "分",
         "q_marks_suffix": "分",
+        "score_label": "建议分数 · 教师确认",
         "footer": "CoachAI · 基于 NESA 官方评分标准",
         "err_import_title": "后端批改模块未就绪",
     },
@@ -111,6 +117,7 @@ I18N = {
         "raw_label": "Raw response (JSON)",
         "marks_unit": "",
         "q_marks_suffix": "marks",
+        "score_label": "Suggested mark · teacher confirmation",
         "footer": "CoachAI · aligned with NESA official marking guidelines",
         "err_import_title": "Backend marking module unavailable",
     },
@@ -272,8 +279,9 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
     unit = L["marks_unit"]
     suffix = f"/ {max_marks} {unit}".strip() if max_marks is not None else ""
     h.append('<div class="r-top">')
-    h.append(f'<div class="r-score"><span class="big">{marks if marks is not None else "-"}</span>'
-             f'<span class="max">{suffix}</span></div>')
+    h.append(f'<div class="r-score-wrap"><div class="r-score-label">{L.get("score_label", "")}</div>'
+             f'<div class="r-score"><span class="big">{marks if marks is not None else "-"}</span>'
+             f'<span class="max">{suffix}</span></div></div>')
     h.append('<div class="r-right">')
     if conf_pct is not None:
         h.append(f'<div class="conf-ring" style="--rc:{ring_color};--pct:{pct_safe}%">'
@@ -339,13 +347,36 @@ def mark_answer_safe(qid: str, answer: str, lang: str):
     except Exception as e:  # noqa: BLE001
         print(f"[app] import graphs.mark_graph 失败: {e}", file=sys.stderr)
         return err_card(L["err_backend"], L["err_backend_hint"]), {"error": str(e)}
+
+    # ---- Phase 3 privacy layer: anonymise BEFORE the engine (and its LLM
+    # calls) ever see the answer, then restore real values for local display.
+    # Trade-off (deliberate): if anonymisation breaks we DEGRADE to marking the
+    # raw text instead of BLOCKING the marking — demo availability wins here;
+    # the stderr warning below is the audit trail for that decision.
+    safe_answer, mapping = answer, {}
     try:
-        res = _mark(qid, answer)
+        safe_answer, mapping = anonymizer.anonymize(answer)
+    except Exception as e:  # noqa: BLE001 — privacy failure must never block marking
+        print(f"[app] anonymisation failed, degrading to raw-text marking (privacy warning): {e}",
+              file=sys.stderr)
+
+    try:
+        res = _mark(qid, safe_answer)
     except Exception as e:  # noqa: BLE001
         print(f"[app] mark_answer 调用失败: {e}", file=sys.stderr)
         return err_card(f'{L["err_unknown"]} {e}'), {"error": str(e)}
     if not isinstance(res, dict):
         return err_card(f'{L["err_unknown"]} unexpected type {type(res).__name__}'), {"raw": res}
+
+    # Re-identify placeholders in the result for the local report only
+    # (restored text is never sent back to any LLM).
+    try:
+        res = anonymizer.restore_result(res, mapping)
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] result re-identification failed (placeholders kept): {e}", file=sys.stderr)
+    # Non-intrusive diagnostics flag; render_result_html only reads known fields.
+    res["_privacy"] = {"anonymised": bool(mapping), "items": len(mapping)}
+
     if res.get("status") == "error":
         msg = res.get("message") or res.get("error") or "unknown error"
         return err_card(f'{L["status_error"]} — {msg}'), res
@@ -432,6 +463,9 @@ body, .gradio-container { color: var(--ink); }
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 .coach-result .r-top { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; }
 .coach-result .r-score { display:flex; align-items:baseline; gap:4px; }
+.coach-result .r-score-wrap { display:flex; flex-direction:column; gap:7px; }
+.coach-result .r-score-label { font-size:.7em; font-weight:800; letter-spacing:1.3px;
+    text-transform:uppercase; color:#8A93A0; }
 .coach-result .r-score .big { font-size:3.4em; font-weight:800; color:var(--blue); line-height:1; letter-spacing:-1px; }
 .coach-result .r-score .max { font-size:1.1em; color:#8A93A0; font-weight:600; }
 .coach-result .r-right { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
