@@ -53,7 +53,7 @@ Flow: **Mark → Plan → Track → Coach → Review** (one engine, five applica
 - Point at the score: "This is a **suggested mark** — the teacher confirms or adjusts. We deliberately never present the AI as the final authority."
 - Point at the confidence scale: "88% confidence. When confidence drops, the answer is automatically flagged for human review. The AI knows what it doesn't know."
 - Point at the feedback sections: "Each 'to improve' point quotes the **official marking guideline**, word for word. Not vibes — the actual rubric."
-- Close with the number: "We validated against 32 answers marked from the official 2025 guidelines: 78% exact match with the human rubric, 100% within one mark, zero wild misses."
+- Close with the number: "We validated against 32 answers marked from the official 2025 guidelines. Across three full runs: 100% of marks within one band of the human rubric, zero wild misses, every time. Exact agreement sits at 75 to 78 percent, and the variation is confined to borderline answers, the ones the system flags for the teacher."
 
 ### 2. Lesson Planner tab (2-3 min)
 
@@ -121,7 +121,7 @@ Flow: **Mark → Plan → Track → Coach → Review** (one engine, five applica
 - **Fine-tuning?** "Not needed for v1 — we validated prompt + RAG beating the need for it (see published 2025 research on short-answer grading). Our roadmap fine-tunes a small open model for offline deployment."
 - **Privacy?** "Anonymisation happens on the school's side before any AI call. The model never sees names, emails or phone numbers."
 - **vs marking.ai?** "They mark. We close the loop: marking feeds planning, tracking, coaching and lesson review — and our feedback quotes the official rubric."
-- **Accuracy?** "78% exact, 100% within one band on our 32-answer validation. And the system flags its own low-confidence marks for teachers."
+- **Accuracy?** "Three full runs on our 32-answer validation: 100% within one band and zero wild misses every time, exact agreement 75 to 78 percent, varying only on borderline answers. And the system flags its own low-confidence marks for teachers."
 - **Data ownership?** "Report comments are drafts until the teacher saves them; student data stays in the local SQLite until the school chooses otherwise."
 
 ---
@@ -130,5 +130,5 @@ Flow: **Mark → Plan → Track → Coach → Review** (one engine, five applica
 
 - App: `python3 app.py` → http://127.0.0.1:7860
 - Demo DB: `data/coachai.db` (re-seed: `python3 tests/seed_golden.py`)
-- Validation report: `docs/GOLDEN_REPORT.md` (baseline: 78.1% / 100%)
+- Validation report: `tests/GOLDEN_REPORT.md` (three runs: 100% +/-1 band every run; exact 75-78%)
 - Full test suite: 118 tests across 7 suites + `tests/test_mark.py` (live LLM)

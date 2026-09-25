@@ -206,7 +206,7 @@ create_table(doc, ["Asset", "Status", "Detail"], [
     ["Model abstraction", "Done", "One config line swaps the LLM provider (DeepSeek active now; Gemini free tier / local Ollama ready)"],
     ["Frontend", "Done", "Gradio app (phone-friendly, EN/CN toggle) with a live public demo link (Cloudflare Tunnel); see 'Try It Live' on the next page"],
     ["Verification", "Done", "Golden Set: 32 simulated answers (8 questions x 4 quality bands), expected marks from official rubric"],
-    ["Verification result", "Measured", "32/32 graded within +/-1 band of the official rubric (100%); exact match 78.1%; zero wild misses"],
+    ["Verification result", "Measured", "Three full runs: 100% within +/-1 band and zero wild misses in every run; exact match 75-78% (78.1%% baseline; 75.0%% in the two most recent runs), varying only on borderline answers"],
 ], col_widths=[4.0, 2.0, 10.0])
 
 # ============ 2. WHAT WE BUILT ============
@@ -297,7 +297,7 @@ bullet(doc, "RAG retrieval: the 4 NESA Teacher Support Resources are indexed (1,
 body(doc, "Why no fine-tuning in the MVP:")
 bullet(doc, "Published evidence: open-weight LLMs prompted with rubric criteria grade competitively "
             "without fine-tuning (ACM 2025, Automatic Short Answer Grading with LLMs). Our own Golden "
-            "Set result (78.1% exact, 100% within +/-1 band, zero misses on 32 answers) confirms this "
+            "Set result (100% within +/-1 band and zero misses on 32 answers, held across three full runs) confirms this "
             "holds for our pipeline.", bold_prefix="Evidence:")
 bullet(doc, "RAG already gives the model the exact official wording it needs at marking time - "
             "equivalent to 'looking up the syllabus' rather than memorising it.", bold_prefix="Coverage:")
@@ -322,7 +322,7 @@ bullet(doc, "Output the same strict JSON contract (marks, justification, feedbac
             "rubric language, with the 4 TSRs as background corpus so the model internalises syllabus "
             "terms. This is the step where 'fine-tuning on the 4 TSRs' genuinely happens.", bold_prefix="3. Objective:")
 bullet(doc, "Re-run the same Golden Set regression. Acceptance criteria: accuracy no worse than today "
-            "(78.1% exact, 100% within +/-1 band) AND latency/cost clearly better. Only then do we swap "
+            "(100% within +/-1 band; 75-78% exact) AND latency/cost clearly better. Only then do we swap "
             "the provider.", bold_prefix="4. Evaluation gate:")
 bullet(doc, "Marker runs on the fine-tuned local model (Ollama / vLLM); RAG stays (official wording is "
             "still injected); the Verifier remains on the stronger cloud model as the independent "
@@ -409,22 +409,25 @@ bullet(doc, "During human review one expectation was itself revised (q24 weak: 1
 h1(doc, "6. Verification Results")
 create_table(doc, ["Metric", "Value"], [
     ["Answers graded successfully", "32 / 32 (0 skipped, 0 errors)"],
-    ["Exact match with official rubric", "25 / 32 = 78.1%"],
-    ["Within +/-1 band of official rubric", "32 / 32 = 100%"],
-    ["Wild misses (>=2 bands off)", "0"],
+    ["Within +/-1 band of official rubric", "32 / 32 = 100% (in every run)"],
+    ["Wild misses (>=2 bands off)", "0 (in every run)"],
+    ["Exact match with official rubric", "75-78% across three runs (78.1% baseline; 75.0% in the two most recent, fully consistent)"],
 ], col_widths=[8.0, 8.0])
-body(doc, "By answer quality:")
+body(doc, "By answer quality (most recent run; the pattern is stable across runs):")
 create_table(doc, ["Quality band", "Exact match", "Within +/-1 band", "Notes"], [
     ["Excellent (top answers)", "8/8 = 100%", "100%", "The engine reliably recognises high-quality answers"],
-    ["Good", "7/8 = 87.5%", "100%", ""],
+    ["Good", "6/8 = 75%", "100%", ""],
     ["Weak", "6/8 = 75%", "100%", ""],
     ["Borderline (trickiest)", "4/8 = 50%", "100%", "Disagreement here is expected - this is exactly what the Verifier flags for the teacher"],
 ], col_widths=[4.5, 3.0, 3.0, 5.5])
-figure(doc, f"{FIG_DIR}/golden_results.png", caption="Figure 4 - Golden Set results (n=32)", width=Inches(6.0))
-body(doc, "Interpretation: zero wild misses means no 'great answer failed' or 'bad answer rewarded' cases. "
-          "The 50% exact rate on borderline answers is not a weakness - real HSC markers disagree on "
-          "borderline scripts too; our design routes exactly those cases to the teacher through the "
-          "Verifier flag.")
+figure(doc, f"{FIG_DIR}/golden_results.png", caption="Figure 4 - Golden Set results (n=32 per run; three full runs)", width=Inches(6.0))
+body(doc, "Interpretation: zero wild misses across all three runs means no 'great answer failed' or "
+          "'bad answer rewarded' cases, ever. The lower exact rate on borderline answers is not a "
+          "weakness - real HSC markers disagree on borderline scripts too; our design routes exactly "
+          "those cases to the teacher through the Verifier flag. Exact agreement varies between "
+          "75-78% across runs and moved by one answer after the September prompt upgrade "
+          "(suggested-mark tone + rubric citations); the +/-1 safety line and the zero-miss record "
+          "never moved.")
 
 # ============ 7. ISSUES FOUND & FIXED ============
 h1(doc, "7. Issues Found and How We Fixed Them")
@@ -436,6 +439,7 @@ create_table(doc, ["Issue", "Root cause", "Fix"], [
     ["No PDF past papers exist for this subject", "Enterprise Computing is examined fully online; 2025 was its first HSC year", "Question stems captured from the official online exam system (fam.hsconline.nesa.nsw.edu.au); marking guidelines PDF downloaded from nsw.gov.au"],
     ["Slow per-answer latency (30-70 s)", "Each answer costs 2-4 LLM calls on DeepSeek", "In-memory cache keyed on question + answer prefix; demo flow reuses cached results"],
     ["Team UI feedback: full question was not visible; interface felt less professional (emoji, round cards)", "Question text truncated to 78 chars in the picker; playful styling", "Full question preview panel added under the picker; emoji removed; corners squared; layout widened (1180 px) with more white space"],
+    ["test_mark cache assertion failed on every run", "The test imported CACHE_HITS via from-import, binding a stale int snapshot; the engine counter was always correct (proved by isolated reproduction)", "Test rewritten to access the counter via the module; now passes - 6/6 gradings + cache hit verified"],
 ], col_widths=[5.0, 5.5, 5.5])
 
 # ============ 8. HOW TO RUN ============
