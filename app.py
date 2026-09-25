@@ -159,6 +159,38 @@ I18N = {
         "st_err_no_student": "请先选择学生。",
         "st_err_backend": "学生模块尚未就绪：无法导入 agents.tracker / agents.report_writer。",
         "st_err_unknown": "生成失败：",
+        # ---- Phase 6a: 练习 / 答疑 tab（学生端） ----
+        "tab_practice": "练习 / 答疑",
+        "cp_year_label": "年级",
+        "cp_module_label": "模块（focus area）",
+        "cp_dp_label": "练习范围（dot points）",
+        "cp_dp_hint": "勾选要练习的内容点，可多选；题目将逐一覆盖所勾选的内容。",
+        "cp_dp_count": "已勾选 {n} 个内容点",
+        "cp_count_label": "出题数量",
+        "cp_gen_btn": "生成练习",
+        "cp_empty": "勾选内容点后点击「生成练习」，针对性题目将显示在这里。",
+        "cp_err_no_dp": "请至少勾选一个内容点再生成练习。",
+        "cp_err_backend": "学生端引擎尚未就绪：无法导入 agents.student_coach。",
+        "cp_err_unknown": "生成失败：",
+        "cp_sheet_title": "针对性练习",
+        "cp_count_note": "{n} 道题",
+        "cp_draft": "草稿 · 作答后对照评分点自查",
+        "cp_q_unit": "分",
+        "cp_focus_head": "出题依据",
+        "cp_criteria_head": "评分点",
+        "cp_hint_head": "提示",
+        "cp_q_label": "你的问题",
+        "cp_q_ph": "写下你在课程内容上的疑问，例如：为什么无损压缩不适用于视频直播？",
+        "cp_context_label": "补充说明（可选）",
+        "cp_context_ph": "例如：我刚在 Q4 上做错了，不清楚 lossy 和 lossless 的区别…",
+        "cp_ask_btn": "提问",
+        "cp_a_empty": "输入问题后点击「提问」，基于 NESA 官方材料的回答将显示在这里。",
+        "cp_a_title": "答疑",
+        "cp_a_draft": "基于 NESA 材料 · 以课程材料为准",
+        "cp_sources_head": "参考来源",
+        "cp_no_sources": "本次未检索到 NESA 材料，回答已注明材料未涵盖的部分。",
+        "cp_note_head": "小提示",
+        "cp_err_no_q": "请先输入问题再提问。",
     },
     "en": {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
@@ -273,6 +305,38 @@ I18N = {
         "st_err_no_student": "Pick a student first.",
         "st_err_backend": "Student module not ready: cannot import agents.tracker / agents.report_writer.",
         "st_err_unknown": "Generation failed:",
+        # ---- Phase 6a: practice / Q&A tab (student side) ----
+        "tab_practice": "Practice / Q&A",
+        "cp_year_label": "Year",
+        "cp_module_label": "Focus area (module)",
+        "cp_dp_label": "Practice scope (dot points)",
+        "cp_dp_hint": "Tick the content you want to practise (multiple allowed); the questions trace back to it.",
+        "cp_dp_count": "Selected: {n}",
+        "cp_count_label": "Number of questions",
+        "cp_gen_btn": "Generate practice",
+        "cp_empty": "Tick some dot points and click Generate. Targeted questions appear here.",
+        "cp_err_no_dp": "Tick at least one dot point before generating.",
+        "cp_err_backend": "Student coach engine not ready: cannot import agents.student_coach.",
+        "cp_err_unknown": "Generation failed:",
+        "cp_sheet_title": "Targeted practice",
+        "cp_count_note": "{n} questions",
+        "cp_draft": "Draft · check against the criteria after attempting",
+        "cp_q_unit": "marks",
+        "cp_focus_head": "Targeted at",
+        "cp_criteria_head": "Marking points",
+        "cp_hint_head": "Hint",
+        "cp_q_label": "Your question",
+        "cp_q_ph": "Ask about the course material, e.g. why lossless compression is not used for live video streaming",
+        "cp_context_label": "Context note (optional)",
+        "cp_context_ph": "e.g. I just got Q4 wrong and I am unsure about the difference between lossy and lossless…",
+        "cp_ask_btn": "Ask",
+        "cp_a_empty": "Type your question and click Ask. The answer, grounded in NESA material, appears here.",
+        "cp_a_title": "Answer",
+        "cp_a_draft": "Grounded in NESA material · course material wins",
+        "cp_sources_head": "Sources",
+        "cp_no_sources": "No NESA material retrieved for this question; the answer states what is not covered.",
+        "cp_note_head": "Tip",
+        "cp_err_no_q": "Please type your question first.",
     },
 }
 
@@ -839,6 +903,136 @@ def st_save_safe(report, lang: str):
                                  period=report.get("period") or "-"),
             gr.update(interactive=False))
 
+# ---------------------------------------------------------------- 练习 / 答疑（Phase 6a）
+def render_practice_empty(lang: str) -> str:
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["cp_empty"]}</div>'
+
+
+def render_answer_empty(lang: str) -> str:
+    return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["cp_a_empty"]}</div>'
+
+
+def render_practice_html(practice: dict, lang: str) -> str:
+    """Render a practice set as a paper-sheet card (no emoji, no markdown).
+
+    One card per question: number, marks pill, question text, the marking
+    points and an optional hint. The focus list shows what the set targets.
+    """
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+
+    questions = [q for q in (practice.get("questions") or []) if isinstance(q, dict)]
+
+    h = ['<div class="cp-sheet">']
+    h.append('<div class="cp-head">')
+    h.append(f'<div class="cp-title">{L["cp_sheet_title"]}</div>')
+    sub_bits = [L["cp_count_note"].format(n=len(questions)), L["cp_draft"]]
+    h.append(f'<div class="cp-sub">{" · ".join(sub_bits)}</div>')
+    h.append('</div>')
+
+    focus = [str(f).strip() for f in (practice.get("focus") or []) if str(f).strip()]
+    if focus:
+        h.append(f'<div class="cp-k">{L["cp_focus_head"]}</div><ul class="cp-focus">')
+        h += [f"<li>{esc(f)}</li>" for f in focus]
+        h.append('</ul>')
+
+    for i, q in enumerate(questions, 1):
+        h.append('<div class="cp-q">')
+        h.append(f'<div class="cp-q-top"><span class="cp-q-no">Q{i}</span>'
+                 f'<span class="cp-q-marks">{esc(str(q.get("marks", "?")))} '
+                 f'{esc(L["cp_q_unit"])}</span></div>')
+        h.append(f'<div class="cp-q-text">'
+                 f'{esc(str(q.get("question", "")).strip())}</div>')
+        criteria = [str(c).strip() for c in (q.get("criteria") or []) if str(c).strip()]
+        if criteria:
+            h.append(f'<div class="cp-k">{L["cp_criteria_head"]}</div><ul class="cp-list">')
+            h += [f"<li>{esc(c)}</li>" for c in criteria]
+            h.append('</ul>')
+        hint = str(q.get("hint") or "").strip()
+        if hint:
+            h.append(f'<div class="cp-hint"><b>{L["cp_hint_head"]}</b>{esc(hint)}</div>')
+        h.append('</div>')
+
+    h.append('</div>')
+    return "".join(h)
+
+
+def render_answer_html(result: dict, lang: str) -> str:
+    """Render one Q&A answer as a paper-sheet card (answer, sources, tip)."""
+    L = I18N.get(lang, I18N["en"])
+    esc = html.escape
+
+    h = ['<div class="cp-sheet">']
+    h.append('<div class="cp-head">')
+    h.append(f'<div class="cp-title">{L["cp_a_title"]}</div>')
+    h.append(f'<div class="cp-sub">{L["cp_a_draft"]}</div>')
+    h.append('</div>')
+
+    answer = str(result.get("answer") or "").strip()
+    h.append(f'<div class="cp-answer">{esc(answer).replace(chr(10), "<br>")}</div>')
+
+    sources = [str(s).strip() for s in (result.get("sources") or []) if str(s).strip()]
+    h.append(f'<div class="cp-k" style="margin-top:20px">{L["cp_sources_head"]}</div>')
+    if sources:
+        h.append('<ul class="cp-list">')
+        h += [f"<li>{esc(s)}</li>" for s in sources]
+        h.append('</ul>')
+    else:
+        h.append(f'<div class="cp-note">{esc(L["cp_no_sources"])}</div>')
+
+    note = str(result.get("note") or "").strip()
+    if note:
+        h.append(f'<div class="cp-tip"><b>{L["cp_note_head"]}</b>{esc(note)}</div>')
+
+    h.append('</div>')
+    return "".join(h)
+
+
+def generate_practice_safe(dot_points, year, count, ui_lang):
+    """Generate one practice set; engine/LLM failures come back as friendly cards."""
+    L = I18N.get(ui_lang, I18N["en"])
+    dots = [str(d).strip() for d in (dot_points or []) if str(d).strip()]
+    if not dots:
+        return err_card(L["cp_err_no_dp"])
+    try:
+        from agents.student_coach import generate_practice  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import agents.student_coach 失败: {e}", file=sys.stderr)
+        return err_card(L["cp_err_backend"], str(e))
+    try:
+        practice = generate_practice(
+            focus_dot_points=dots, year=year, count=int(count or 3), lang=ui_lang,
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] generate_practice 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["cp_err_unknown"]} {e}')
+    if not isinstance(practice, dict) or not practice.get("questions"):
+        return err_card(f'{L["cp_err_unknown"]} empty practice set')
+    return render_practice_html(practice, ui_lang)
+
+
+def answer_question_safe(student_question, context_note, year, ui_lang):
+    """Answer one student question; engine/LLM failures come back as friendly cards."""
+    L = I18N.get(ui_lang, I18N["en"])
+    if not (student_question or "").strip():
+        return err_card(L["cp_err_no_q"])
+    try:
+        from agents.student_coach import answer_question  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] import agents.student_coach 失败: {e}", file=sys.stderr)
+        return err_card(L["cp_err_backend"], str(e))
+    try:
+        result = answer_question(
+            student_question, context_note=(context_note or "").strip(),
+            year=year, lang=ui_lang,
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[app] answer_question 调用失败: {e}", file=sys.stderr)
+        return err_card(f'{L["cp_err_unknown"]} {e}')
+    if not isinstance(result, dict) or not result.get("answer"):
+        return err_card(f'{L["cp_err_unknown"]} empty answer')
+    return render_answer_html(result, ui_lang)
+
 # ---------------------------------------------------------------- Gradio 界面
 PAGE_CSS = """
 :root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#143A5C;
@@ -1029,6 +1223,46 @@ body, .gradio-container { color: var(--ink); }
 .st-sheet .st-comment-text { font-size:1em; line-height:1.8; color: var(--ink); }
 .st-sheet .st-comment-text + .st-k { margin-top:22px; }
 
+/* ---------- practice / Q&A tab (Phase 6a) ---------- */
+#cp-gen-btn, #cp-ask-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
+    border: none !important; border-radius: 8px !important; font-weight: 700 !important;
+    padding: 15px 56px !important; font-size: 1.05em !important; letter-spacing: .3px;
+    box-shadow: 0 4px 14px rgba(31,78,121,.28) !important; transition: all .18s ease !important; }
+#cp-gen-btn:hover, #cp-ask-btn:hover { transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
+#cp-gen-btn:active, #cp-ask-btn:active { transform: translateY(0); }
+#cp-gen-btn:disabled, #cp-ask-btn:disabled { opacity:.55 !important; }
+.cp-sheet { background:#fff; border:1px solid var(--rule); border-radius:12px;
+    padding: 28px 32px 24px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 14px 36px rgba(26,35,50,.05); }
+.cp-sheet .cp-head { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 16px; }
+.cp-sheet .cp-title { font-size: 1.3em; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+.cp-sheet .cp-sub { font-size: .8em; color:#7A8494; margin-top: 5px; }
+.cp-sheet .cp-k { font-size:.7em; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#7A8494; margin: 14px 0 5px; }
+.cp-sheet ul.cp-focus, .cp-sheet ul.cp-list { margin: 4px 0 0 18px; padding:0; }
+.cp-sheet ul.cp-focus li, .cp-sheet ul.cp-list li { padding: 2px 0; font-size:.9em;
+    color:#33404F; line-height:1.6; }
+.cp-sheet .cp-q { background:#FBF9F5; border:1px solid #EFEAE0; border-radius:8px;
+    padding: 15px 18px; margin-top: 14px; }
+.cp-sheet .cp-q-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.cp-sheet .cp-q-no { color: var(--blue); font-weight:800; font-size:.85em; letter-spacing:.6px; }
+.cp-sheet .cp-q-marks { border:1px solid #D8D2C6; color:#5A6472; border-radius:5px;
+    padding:2px 10px; font-size:.75em; font-weight:700; }
+.cp-sheet .cp-q-text { margin-top:8px; font-size:.96em; line-height:1.7; color: var(--ink); }
+.cp-sheet .cp-hint { margin-top:10px; padding-top:8px; border-top:1px dashed #E3DCD0;
+    font-size:.85em; color:#6B7684; line-height:1.6; }
+.cp-sheet .cp-hint b, .cp-sheet .cp-tip b { color: var(--blue); font-size:.78em;
+    letter-spacing:1px; text-transform:uppercase; margin-right:8px; }
+.cp-sheet .cp-answer { font-size:1em; line-height:1.8; color: var(--ink); }
+.cp-sheet .cp-note { color:#8A93A0; font-size:.9em; }
+.cp-sheet .cp-tip { margin-top:20px; padding:12px 16px; background: var(--soft);
+    border-left:3px solid var(--rule); border-radius:0 6px 6px 0; font-size:.9em;
+    color:#5A6472; line-height:1.65; }
+#cp-dots { max-height: 420px; overflow-y: auto; }
+#cp-dots label { text-transform:none !important; letter-spacing:0 !important;
+    font-weight:500 !important; font-size:.92em !important; color:#33404F !important; line-height:1.5; }
+#cp-counter p { font-size:.82em !important; color:#8A93A0 !important; margin: 2px 0 0; }
+
 @media (max-width: 760px) {
     .gradio-container { padding: 0 4px 40px !important; }
     #coach-header { padding: 22px 20px 18px; }
@@ -1156,8 +1390,47 @@ def build_ui() -> gr.Blocks:
                                             interactive=False)
                     st_status = gr.Markdown("", elem_id="st-status")
 
+            # -------------------------------------------------- Tab 4: 练习 / 答疑
+            with gr.Tab(I18N["zh"]["tab_practice"], id="tab-practice") as tab_practice:
+                _cp_year0 = "Year 11"
+                _cp_mods0 = lp_modules(_cp_year0)
+                _cp_mod0 = _cp_mods0[0] if _cp_mods0 else None
+                _cp_dps0 = lp_dot_point_choices(_cp_year0, _cp_mod0) if _cp_mod0 else []
+
+                # ---------- 区块 A：生成练习 ----------
+                with gr.Group(elem_classes="panel"):
+                    cp_year = gr.Radio(["Year 11", "Year 12"], value=_cp_year0,
+                                       label=I18N["zh"]["cp_year_label"], elem_id="cp-year")
+                    cp_module = gr.Dropdown(choices=_cp_mods0, value=_cp_mod0,
+                                            label=I18N["zh"]["cp_module_label"],
+                                            elem_id="cp-module")
+                    cp_hint = gr.Markdown(I18N["zh"]["cp_dp_hint"], elem_id="cp-hint")
+                    cp_dots = gr.CheckboxGroup(choices=_cp_dps0, value=[],
+                                               label=I18N["zh"]["cp_dp_label"],
+                                               show_select_all=True, elem_id="cp-dots")
+                    cp_counter = gr.Markdown(I18N["zh"]["cp_dp_count"].format(n=0),
+                                             elem_id="cp-counter")
+                    cp_count = gr.Slider(minimum=1, maximum=5, step=1, value=3,
+                                         label=I18N["zh"]["cp_count_label"],
+                                         elem_id="cp-count")
+                cp_gen_btn = gr.Button(I18N["zh"]["cp_gen_btn"], variant="primary",
+                                       elem_id="cp-gen-btn", size="lg")
+                cp_result = gr.HTML(render_practice_empty("zh"), elem_id="cp-result")
+
+                # ---------- 区块 B：提问 ----------
+                with gr.Group(elem_classes="panel"):
+                    cp_q_box = gr.Textbox(label=I18N["zh"]["cp_q_label"], lines=4,
+                                          placeholder=I18N["zh"]["cp_q_ph"],
+                                          elem_id="cp-q-box")
+                    cp_context = gr.Textbox(label=I18N["zh"]["cp_context_label"], lines=2,
+                                            placeholder=I18N["zh"]["cp_context_ph"],
+                                            elem_id="cp-context")
+                cp_ask_btn = gr.Button(I18N["zh"]["cp_ask_btn"], variant="primary",
+                                       elem_id="cp-ask-btn", size="lg")
+                cp_answer = gr.HTML(render_answer_empty("zh"), elem_id="cp-answer")
+
         # ---------- 语言切换 ----------
-        def set_lang(lang_choice, cur_qid, lp_selected):
+        def set_lang(lang_choice, cur_qid, lp_selected, cp_selected):
             lang = "en" if lang_choice == "EN" else "zh"
             L = I18N[lang]
             updates = {
@@ -1198,22 +1471,39 @@ def build_ui() -> gr.Blocks:
                 st_notes: gr.update(label=L["st_notes_label"], placeholder=L["st_notes_ph"]),
                 st_gen_btn: gr.update(value=L["st_gen_btn"]),
                 st_save_btn: gr.update(value=L["st_save_btn"]),
+                # ---- Phase 6a: practice / Q&A tab ----
+                tab_practice: gr.update(label=L["tab_practice"]),
+                cp_year: gr.update(label=L["cp_year_label"]),
+                cp_module: gr.update(label=L["cp_module_label"]),
+                cp_hint: gr.update(value=L["cp_dp_hint"]),
+                cp_dots: gr.update(label=L["cp_dp_label"]),
+                cp_counter: gr.update(value=L["cp_dp_count"].format(n=len(cp_selected or []))),
+                cp_count: gr.update(label=L["cp_count_label"]),
+                cp_gen_btn: gr.update(value=L["cp_gen_btn"]),
+                cp_q_box: gr.update(label=L["cp_q_label"], placeholder=L["cp_q_ph"]),
+                cp_context: gr.update(label=L["cp_context_label"], placeholder=L["cp_context_ph"]),
+                cp_ask_btn: gr.update(value=L["cp_ask_btn"]),
             }
             order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
                      add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save,
                      tab_mark, tab_lesson, lp_year, lp_module, lp_hint, lp_dots, lp_counter,
                      lp_ref, lp_dur, lp_btn, tab_students, st_student, st_analyze_btn,
-                     st_period, st_notes, st_gen_btn, st_save_btn)
+                     st_period, st_notes, st_gen_btn, st_save_btn,
+                     tab_practice, cp_year, cp_module, cp_hint, cp_dots, cp_counter,
+                     cp_count, cp_gen_btn, cp_q_box, cp_context, cp_ask_btn)
             return [lang, *[updates[c] for c in order]]
 
         lang_radio.change(fn=set_lang,
-                          inputs=[lang_radio, qid_state, lp_dots],
+                          inputs=[lang_radio, qid_state, lp_dots, cp_dots],
                           outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord,
                                    q_preview, title_md, add_accord, cq_note, cq_text, cq_marks,
                                    cq_criteria, cq_sample, cq_save, tab_mark, tab_lesson,
                                    lp_year, lp_module, lp_hint, lp_dots, lp_counter,
                                    lp_ref, lp_dur, lp_btn, tab_students, st_student,
-                                   st_analyze_btn, st_period, st_notes, st_gen_btn, st_save_btn])
+                                   st_analyze_btn, st_period, st_notes, st_gen_btn, st_save_btn,
+                                   tab_practice, cp_year, cp_module, cp_hint, cp_dots,
+                                   cp_counter, cp_count, cp_gen_btn, cp_q_box, cp_context,
+                                   cp_ask_btn])
 
         # ---------- 示例答案填充 ----------
         def on_q_change(qid, lang):
@@ -1327,6 +1617,35 @@ def build_ui() -> gr.Blocks:
 
         st_save_btn.click(fn=st_save_safe, inputs=[st_last_report, lang_state],
                           outputs=[st_status, st_save_btn])
+
+        # ---------- 练习 / 答疑（Phase 6a）：联动 + 出题 + 提问 ----------
+        def on_cp_year_change(year, lang):
+            """Year change -> refresh module dropdown and dot point checkboxes."""
+            mods = lp_modules(year)
+            first = mods[0] if mods else None
+            dps = lp_dot_point_choices(year, first) if first else []
+            return (gr.update(choices=mods, value=first),
+                    gr.update(choices=dps, value=[]),
+                    lp_selection_note([], lang))
+
+        def on_cp_module_change(year, focus_area, lang):
+            """Module change -> refresh dot point checkboxes (selection cleared)."""
+            return (gr.update(choices=lp_dot_point_choices(year, focus_area), value=[]),
+                    lp_selection_note([], lang))
+
+        cp_year.change(fn=on_cp_year_change, inputs=[cp_year, lang_state],
+                       outputs=[cp_module, cp_dots, cp_counter])
+        cp_module.change(fn=on_cp_module_change, inputs=[cp_year, cp_module, lang_state],
+                         outputs=[cp_dots, cp_counter])
+        cp_dots.change(fn=lp_selection_note, inputs=[cp_dots, lang_state],
+                       outputs=[cp_counter])
+
+        cp_gen_btn.click(fn=generate_practice_safe,
+                         inputs=[cp_dots, cp_year, cp_count, lang_state],
+                         outputs=[cp_result])
+        cp_ask_btn.click(fn=answer_question_safe,
+                         inputs=[cp_q_box, cp_context, cp_year, lang_state],
+                         outputs=[cp_answer])
 
     return demo
 
