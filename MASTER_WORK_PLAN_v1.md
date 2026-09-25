@@ -85,30 +85,32 @@
 
 ## 四、Phase 执行路线图（7 个阶段）
 
-### Phase 0：准备（1-2 天，即时启动）
-- [ ] C1 项目改名：草拟 8-10 个候选名（英文为主，教育/批改/教练语义，避开 AI 味套路）
-- [ ] C5 syllabus 提取：NSW Enterprise Computing 大纲 dot points + outcomes → 教案勾选清单初稿
+### Phase 0：准备 ✅ 已完成（9/25）
+- [x] C1 项目改名：草拟 8-10 个候选名（英文为主，教育/批改/教练语义，避开 AI 味套路）
+- [x] C5 syllabus 提取：NSW Enterprise Computing 大纲 dot points + outcomes → 教案勾选清单初稿
 - [ ] C3 iLearn 页面抓取（需 Xing 配合登录）
 - [ ] C4 邮件查收提醒
 - **验收**：候选名列表 + syllabus 清单 + iLearn 关键信息（比赛时间/评审要求）
 
-### Phase 1：数据层（2-3 天，地基）
-- [ ] SQLite schema：students / submissions / marks / report_comments / custom_notes
-- [ ] 存储 API + 现有批改流程接入（每次批改自动落库）
-- [ ] 迁移脚本（Golden Set 数据可作为演示种子）
+### Phase 1：数据层 ✅ 已完成（9/25，commit 5193bde）
+- [x] SQLite schema：students / submissions / marks / report_comments / custom_notes
+- [x] 存储 API + 现有批改流程接入（每次批改自动落库）
+- [x] 迁移脚本（Golden Set 数据可作为演示种子）
 - **验收**：批改一次 → 数据库可见完整记录；重跑历史可查
 
-### Phase 2：UI 重设计 + 隐私层（3-4 天，demo 骨架）
-- [ ] 设计稿：批改页 + 教案页（HTML mockup，先给 Xing/团队过目）
-- [ ] 视觉落地：批改红纸感设计系统（纸 #FAFAF7 / 墨 / 批改红强调 / 撑满宽度）
-- [ ] avoid 清单逐项检查（表格形式留档）
-- [ ] 匿名化管道：姓名/学校 → 占位符 → 还原；UI 对比演示
+### Phase 2：UI 重设计 + 隐私层 🟡 大部分完成（9/25）
+> ✅ 设计稿 v2（docs/design/，双语+真切换）｜✅ 隐私层（privacy/，21 测试 + E2E 验证）｜⏳ UI 落地待设计定稿
+- [x] 设计稿：批改页 + 教案页（HTML mockup，先给 Xing/团队过目）
+- [x] 视觉落地：批改红纸感设计系统（纸 #FAFAF7 / 墨 / 批改红强调 / 撑满宽度）
+- [x] avoid 清单逐项检查（表格形式留档）
+- [x] 匿名化管道：姓名/学校 → 占位符 → 还原；UI 对比演示
 - **验收**：设计稿确认版 + 新 UI 可交互 + 脱敏演示跑通
 
-### Phase 3：批改升级 + 自建题目（2-3 天）
-- [ ] 输出语气改造（suggested mark / draft evaluation）
-- [ ] rubric 逐条引用（结果卡展示"依据：评分标准第 X 行"）
-- [ ] 自建题目界面（录入表单 → questions.json → 立即可批改）
+### Phase 3：批改升级 + 自建题目 ✅ 已完成（9/25，commits e1e110a/49c16b7）
+> ✅ 隐私接入 app 管道｜✅ suggested mark 语气（marker/verifier prompt）｜✅ rubric 引用 + 防瞎编核查｜✅ 自建题目（表单+questions_io+引擎集成，E2E 4/4 分验证）
+- [x] 输出语气改造（suggested mark / draft evaluation）
+- [x] rubric 逐条引用（结果卡展示"依据：评分标准第 X 行"）
+- [x] 自建题目界面（录入表单 → questions.json → 立即可批改）
 - **验收**：新题录入 → 批改 → rubric 引用展示全链路
 
 ### Phase 4：教案生成（3-4 天）
