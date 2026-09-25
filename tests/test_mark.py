@@ -17,7 +17,10 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from graphs.mark_graph import CACHE_HITS, clear_cache, mark_answer  # noqa: E402
+import graphs.mark_graph as mg  # noqa: E402
+# NOTE: access CACHE_HITS / clear_cache / mark_answer via the module (mg.xxx).
+# A from-import of CACHE_HITS would bind an int SNAPSHOT: the engine increments
+# the module attribute, leaving the local name stale forever (test bug fixed here).
 
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_mark_run.log")
 
@@ -72,14 +75,14 @@ def summary_row(qid: str, kind: str, r: dict, elapsed: float) -> str:
 
 
 def main() -> int:
-    clear_cache()
+    mg.clear_cache()
     t0 = time.time()
     rows, failures = [], 0
     log_lines = [f"CoachAI Workflow1 test run @ {time.strftime('%Y-%m-%d %H:%M:%S')}", "=" * 100]
 
     for qid, kind, answer in CASES:
         start = time.time()
-        r = mark_answer(qid, answer)
+        r = mg.mark_answer(qid, answer)
         elapsed = time.time() - start
 
         # ---- contract assertions (error dicts are a legitimate pipeline response)
@@ -113,20 +116,20 @@ def main() -> int:
         print(row, flush=True)
 
     # ---- cache path check: identical request must hit the in-memory cache
-    before = CACHE_HITS
-    mark_answer(CASES[0][0], CASES[0][2])  # same qid + same answer → must hit cache
-    log_lines.append(f"cache: hits before={before} after={CACHE_HITS} (identical request served from cache)")
-    assert CACHE_HITS == before + 1, "identical request did not hit the cache"
-    print(f"cache OK: repeated request served from memory cache (hits={CACHE_HITS})", flush=True)
+    before = mg.CACHE_HITS
+    mg.mark_answer(CASES[0][0], CASES[0][2])  # same qid + same answer → must hit cache
+    log_lines.append(f"cache: hits before={before} after={mg.CACHE_HITS} (identical request served from cache)")
+    assert mg.CACHE_HITS == before + 1, "identical request did not hit the cache"
+    print(f"cache OK: repeated request served from memory cache (hits={mg.CACHE_HITS})", flush=True)
 
     # ---- error path: unknown question id must return error dict, not raise
-    r_err = mark_answer("ec2025-q999", "some answer")
+    r_err = mg.mark_answer("ec2025-q999", "some answer")
     assert r_err["status"] == "error" and "error" in r_err
     log_lines.append(f"error path OK: unknown question -> {r_err['status']}")
     print(f"error path OK: unknown question_id -> status={r_err['status']}", flush=True)
 
     # ---- empty answer guard
-    r_empty = mark_answer("ec2025-q14", "   ")
+    r_empty = mg.mark_answer("ec2025-q14", "   ")
     assert r_empty["status"] == "error"
     log_lines.append("empty-answer guard OK")
 
