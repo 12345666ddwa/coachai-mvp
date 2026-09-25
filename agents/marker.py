@@ -11,6 +11,7 @@ structured feedback, returned as a dict:
         "marks": int,            # provisional 0..max_marks
         "justification": str,    # why this mark (band matched, keywords hit/missed)
         "feedback": [{"type": "good"|"improve"|"rule", "text": str}, ...]
+                                 # 'rule' entries quote the rubric verbatim (1-2 required)
     }
 
 All LLM calls go through agents.models.complete() (project-wide convention).
@@ -53,7 +54,7 @@ def build_rubric_text(question: dict) -> str:
     if mg:
         bands = sorted(mg, key=lambda g: _band_num(g.get("band")), reverse=True)
         return "\n".join(
-            f"[{g.get('band', '?')} mark band] {str(g.get('criteria', '')).strip()}"
+            f"[{str(g.get('band') or '?')} mark band] {str(g.get('criteria', '')).strip()}"
             for g in bands
         )
     return f"No detailed band criteria provided. Maximum {question.get('marks', '?')} marks."
@@ -149,6 +150,11 @@ def build_marker_prompt(
         "must be specific to THIS answer (never generic boilerplate); type 'good' = what "
         "the student did well, 'improve' = how to lift the answer, 'rule' = syllabus "
         "misconception or rule the student broke."
+        "\nRubric citation: always include 1-2 feedback entries of type 'rule'. Each "
+        "'rule' entry MUST quote a short phrase copied verbatim from the RUBRIC "
+        "section (wrap it in double quotes) and then state how that rule affected "
+        "this answer — what it earned or what it lost against that band. Never quote "
+        "text that does not appear in the RUBRIC section."
     )
 
     lines = []

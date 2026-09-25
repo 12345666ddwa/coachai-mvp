@@ -26,7 +26,6 @@ Public interface (used by the Gradio UI and everywhere else):
 """
 import copy
 import hashlib
-import json
 import os
 import sys
 from typing import Optional, TypedDict
@@ -37,6 +36,7 @@ if _ROOT not in sys.path:
 
 from agents.marker import mark as marker_mark  # noqa: E402
 from agents.verifier import verify as verifier_verify  # noqa: E402
+from questions_io import CUSTOM_FILE, load_all_questions  # noqa: E402
 
 try:
     from langgraph.graph import END, START, StateGraph
@@ -44,6 +44,7 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("langgraph is not installed — run: pip install langgraph") from exc
 
 QUESTIONS_PATH = os.path.join(_ROOT, "data", "questions.json")
+CUSTOM_QUESTIONS_PATH = os.path.join(_ROOT, "data", CUSTOM_FILE)
 RAG_K = 4
 MAX_RETRIES = 2          # max extra marker+verifier rounds after a rejection
 CONF_CAP, CONF_FLOOR = 95, 25
@@ -54,7 +55,7 @@ CONF_CAP, CONF_FLOOR = 95, 25
 class MarkState(TypedDict):
     question_id: str
     student_answer: str
-    question: Optional[dict]           # loaded from data/questions.json
+    question: Optional[dict]           # official bank or custom question
     retrieved_docs: list               # RAG hits [{text, source, topic, score}]
     provisional: Optional[dict]        # marker output
     verified: Optional[dict]           # verifier output
@@ -66,14 +67,12 @@ class MarkState(TypedDict):
 # ------------------------------------------------------------------- helpers
 
 def load_question_by_id(question_id: str) -> dict:
-    """Find a question dict in data/questions.json by its id."""
-    with open(QUESTIONS_PATH, encoding="utf-8") as fh:
-        data = json.load(fh)
-    for q in data.get("questions", []):
+    """Find a question dict by id — official bank first, then custom questions."""
+    for q in load_all_questions([QUESTIONS_PATH, CUSTOM_QUESTIONS_PATH]):
         if q.get("id") == question_id:
             return q
     raise ValueError(f"[mark_graph] unknown question_id: {question_id!r} "
-                     f"(valid ids in {QUESTIONS_PATH})")
+                     f"(searched {QUESTIONS_PATH} and {CUSTOM_QUESTIONS_PATH})")
 
 
 def _require(state: MarkState, key: str) -> dict:

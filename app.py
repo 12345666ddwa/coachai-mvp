@@ -31,8 +31,13 @@ from gradio.themes import Default as GradioDefault, colors as gradio_colors
 # only locally for display.
 from privacy import anonymizer
 
+# Teacher-authored questions are merged with the official bank (same logic the
+# marking engine uses, via questions_io).
+from questions_io import CUSTOM_FILE, load_all_questions, save_custom_question
+
 BASE_DIR = Path(__file__).resolve().parent
 QUESTIONS_PATH = BASE_DIR / "data" / "questions.json"
+CUSTOM_QUESTIONS_PATH = BASE_DIR / "data" / CUSTOM_FILE
 GOLDEN_PATH = BASE_DIR / "tests" / "golden_set.json"
 
 # ---------------------------------------------------------------- i18n 文案
@@ -68,7 +73,7 @@ I18N = {
         "attempts": "答题次数",
         "fb_good": "优点",
         "fb_improve": "改进建议",
-        "fb_rule": "规则提示",
+        "fb_rule": "评分标准引用",
         "fb_other": "反馈",
         "flags_head": "疑点标记",
         "just_head": "批改说明",
@@ -78,6 +83,18 @@ I18N = {
         "score_label": "建议分数 · 教师确认",
         "footer": "CoachAI · 基于 NESA 官方评分标准",
         "err_import_title": "后端批改模块未就绪",
+        "add_q_label": "添加题目（自建题）",
+        "add_q_note": "保存后立即出现在题目下拉框中，可直接批改。评分标准每行一条，可用「3 marks: …」标注档位。",
+        "add_q_text_label": "题目题干",
+        "add_q_text_ph": "在此粘贴题目原文（支持多行、中英文混排）…",
+        "add_q_marks_label": "分值",
+        "add_q_criteria_label": "评分标准（必填）",
+        "add_q_criteria_ph": "每行一条评分标准，例如：\n3 marks: Explains ...\n2 marks: Outlines ...\n1 mark: Provides some relevant information",
+        "add_q_sample_label": "参考答案（可选）",
+        "add_q_sample_ph": "参考答案 / sample answer …",
+        "add_q_btn": "保存题目",
+        "add_q_ok": "已保存：{qid}（可在题目下拉框中选用）",
+        "add_q_err": "保存失败：题干、分值和评分标准均为必填。",
     },
     "en": {
         "title": "CoachAI — HSC Enterprise Computing AI Marking",
@@ -110,7 +127,7 @@ I18N = {
         "attempts": "Attempts",
         "fb_good": "Strengths",
         "fb_improve": "To improve",
-        "fb_rule": "Marking rule",
+        "fb_rule": "Rubric reference",
         "fb_other": "Feedback",
         "flags_head": "Flags",
         "just_head": "Justification",
@@ -120,6 +137,18 @@ I18N = {
         "score_label": "Suggested mark · teacher confirmation",
         "footer": "CoachAI · aligned with NESA official marking guidelines",
         "err_import_title": "Backend marking module unavailable",
+        "add_q_label": "Add your own question",
+        "add_q_note": "Saved questions appear in the dropdown right away and can be marked immediately. One criterion per line; optionally prefix a band, e.g. \"3 marks: …\".",
+        "add_q_text_label": "Question text",
+        "add_q_text_ph": "Paste the question here (multi-line, CN/EN welcome)…",
+        "add_q_marks_label": "Marks",
+        "add_q_criteria_label": "Marking criteria (required)",
+        "add_q_criteria_ph": "One criterion per line, e.g.\n3 marks: Explains ...\n2 marks: Outlines ...\n1 mark: Provides some relevant information",
+        "add_q_sample_label": "Sample answer (optional)",
+        "add_q_sample_ph": "Reference / sample answer …",
+        "add_q_btn": "Save question",
+        "add_q_ok": "Saved as {qid} — now selectable in the question dropdown.",
+        "add_q_err": "Could not save: question text, marks and marking criteria are required.",
     },
 }
 
@@ -137,14 +166,8 @@ STATUS_STYLE = {
 
 # ---------------------------------------------------------------- 数据加载
 def load_questions() -> list[dict]:
-    """读取题库；失败返回 []。"""
-    try:
-        with open(QUESTIONS_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("questions", [])
-    except Exception as e:  # noqa: BLE001
-        print(f"[app] 题库读取失败: {e}", file=sys.stderr)
-        return []
+    """官方题库 + 老师自建题（custom 排在后）/ official bank + custom questions."""
+    return load_all_questions([QUESTIONS_PATH, CUSTOM_QUESTIONS_PATH])
 
 
 def _truncate(text: str, n: int = 78) -> str:
@@ -547,12 +570,28 @@ def build_ui() -> gr.Blocks:
         with raw_accord:
             raw_json = gr.JSON(value=None, show_label=False)
 
+        # ---------- 4. 自建题目（老师录入，默认收起） ----------
+        with gr.Accordion(I18N["zh"]["add_q_label"], open=False,
+                          elem_classes="panel", elem_id="add-q") as add_accord:
+            cq_note = gr.Markdown(I18N["zh"]["add_q_note"], elem_id="add-q-note")
+            cq_text = gr.Textbox(label=I18N["zh"]["add_q_text_label"], lines=6,
+                                 placeholder=I18N["zh"]["add_q_text_ph"])
+            cq_marks = gr.Number(label=I18N["zh"]["add_q_marks_label"], value=None,
+                                 precision=0, minimum=1, maximum=100)
+            cq_criteria = gr.Textbox(label=I18N["zh"]["add_q_criteria_label"], lines=5,
+                                     placeholder=I18N["zh"]["add_q_criteria_ph"])
+            cq_sample = gr.Textbox(label=I18N["zh"]["add_q_sample_label"], lines=3,
+                                   placeholder=I18N["zh"]["add_q_sample_ph"])
+            cq_save = gr.Button(I18N["zh"]["add_q_btn"], elem_id="add-q-btn")
+            cq_status = gr.Markdown("", elem_id="add-q-status")
+
         # ---------- 语言切换 ----------
         def set_lang(lang_choice, cur_qid):
             lang = "en" if lang_choice == "EN" else "zh"
             L = I18N[lang]
             updates = {
-                q_dropdown: gr.update(choices=q_choices(questions, lang), value=cur_qid,
+                # re-read the bank so custom questions saved earlier stay listed
+                q_dropdown: gr.update(choices=q_choices(load_questions(), lang), value=cur_qid,
                                       label=L["q_label"], info=None),
                 ans_box: gr.update(label=L["ans_label"], placeholder=L["ans_ph"]),
                 ex_radio: gr.update(choices=[L["ex_good"], L["ex_bad"]], label=L["ex_label"]),
@@ -562,12 +601,23 @@ def build_ui() -> gr.Blocks:
                 title_md: gr.update(value=f'<div class="logo"><span class="mark">AI</span><span class="brandname">CoachAI</span> '
                                           f'<span class="hsc-tag">HSC</span></div>'
                                           f'<div class="sub">{L["subtitle"]}</div>'),
+                add_accord: gr.update(label=L["add_q_label"]),
+                cq_note: gr.update(value=L["add_q_note"]),
+                cq_text: gr.update(label=L["add_q_text_label"], placeholder=L["add_q_text_ph"]),
+                cq_marks: gr.update(label=L["add_q_marks_label"]),
+                cq_criteria: gr.update(label=L["add_q_criteria_label"], placeholder=L["add_q_criteria_ph"]),
+                cq_sample: gr.update(label=L["add_q_sample_label"], placeholder=L["add_q_sample_ph"]),
+                cq_save: gr.update(value=L["add_q_btn"]),
             }
-            return [lang, *[updates[c] for c in (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md)]]
+            order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
+                     add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save)
+            return [lang, *[updates[c] for c in order]]
 
         lang_radio.change(fn=set_lang,
                           inputs=[lang_radio, qid_state],
-                          outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md])
+                          outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord,
+                                   q_preview, title_md, add_accord, cq_note, cq_text, cq_marks,
+                                   cq_criteria, cq_sample, cq_save])
 
         # ---------- 示例答案填充 ----------
         def on_q_change(qid, lang):
@@ -591,6 +641,39 @@ def build_ui() -> gr.Blocks:
 
         ex_radio.select(fn=fill_example, inputs=[ex_radio, qid_state, lang_state],
                         outputs=[ans_box, ex_radio])
+
+        # ---------- 自建题目：保存 + 刷新下拉框 ----------
+        def on_save_question(text, marks, criteria, sample, lang, cur_qid):
+            """Persist a teacher-authored question, refresh the dropdown and preview."""
+            L = I18N.get(lang, I18N["en"])
+            try:
+                qid = save_custom_question(
+                    BASE_DIR / "data",
+                    {"text": text, "marks": marks, "criteria": criteria,
+                     "sample_answer": sample},
+                )
+            except ValueError as exc:  # validation failed -> nothing was written
+                msg = f'{L["add_q_err"]} ({exc})'
+                try:
+                    gr.Warning(msg)
+                except Exception:  # noqa: BLE001
+                    pass
+                keep = gr.update()
+                return (keep, cur_qid, keep, msg, keep, keep, keep, keep)
+            questions_now = load_questions()
+            msg = L["add_q_ok"].format(qid=qid)
+            try:
+                gr.Info(msg)
+            except Exception:  # noqa: BLE001
+                pass
+            return (gr.update(choices=q_choices(questions_now, lang), value=qid),
+                    qid, q_preview_md(qid, lang), msg,
+                    "", None, "", "")
+
+        cq_save.click(fn=on_save_question,
+                      inputs=[cq_text, cq_marks, cq_criteria, cq_sample, lang_state, qid_state],
+                      outputs=[q_dropdown, qid_state, q_preview, cq_status,
+                               cq_text, cq_marks, cq_criteria, cq_sample])
 
         # ---------- 批改 ----------
         def on_mark(qid, answer, lang):
