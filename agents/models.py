@@ -32,19 +32,31 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # ---------------------------------------------------------------- providers
 # Each provider needs: env-var key name + default base_url + default model
+# NOTE: Ollama runs locally and needs NO real API key. The OpenAI SDK still
+# requires a non-empty api_key argument, so we pass the placeholder "ollama"
+# when no key is set (a local Ollama server ignores the value entirely).
 PROVIDER_ENV_KEY = {
     "deepseek": "DEEPSEEK_API_KEY",
     # "gemini": "GEMINI_API_KEY",   # future: add one line + one branch below
-    # "ollama": "OLLAMA_API_KEY",   # future: base_url points to local 11434/v1
+    "ollama": "OLLAMA_API_KEY",     # optional; local server ignores the value
 }
 
 PROVIDER_DEFAULT_BASE_URL = {
     "deepseek": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
     # "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
-    # "ollama": "http://127.0.0.1:11434/v1",
+    "ollama": os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1"),
 }
 
-DEFAULT_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+PROVIDER_DEFAULT_MODEL = {
+    "deepseek": os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
+    "ollama": os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
+}
+
+DEFAULT_MODEL = PROVIDER_DEFAULT_MODEL["deepseek"]
+
+def _default_model_for(provider: str) -> str:
+    """Default model name for a provider (falls back to the DeepSeek default)."""
+    return PROVIDER_DEFAULT_MODEL.get(provider, DEFAULT_MODEL)
 
 _client_cache: dict = {}
 
@@ -54,10 +66,14 @@ def _get_client(provider: str = "deepseek") -> OpenAI:
     if provider not in _client_cache:
         key = os.getenv(PROVIDER_ENV_KEY[provider], "")
         if not key:
-            raise RuntimeError(
-                f"[models.py] Missing {PROVIDER_ENV_KEY[provider]}; "
-                f"please check that {BASE_DIR}/.env is configured."
-            )
+            if provider == "ollama":
+                # Local Ollama needs no key; the SDK just needs a non-empty string.
+                key = "ollama"
+            else:
+                raise RuntimeError(
+                    f"[models.py] Missing {PROVIDER_ENV_KEY[provider]}; "
+                    f"please check that {BASE_DIR}/.env is configured."
+                )
         _client_cache[provider] = OpenAI(
             api_key=key,
             base_url=PROVIDER_DEFAULT_BASE_URL[provider],
@@ -83,8 +99,9 @@ def complete(
         user_prompt:   User / student content.
         temperature:   Sampling temperature; 0~0.3 is recommended for marking
                        tasks to keep results consistent.
-        model:         Override the default model name; None uses DEFAULT_MODEL.
-        provider:      'deepseek' (extensible to 'gemini' / 'ollama' later).
+        model:         Override the default model name; None uses the provider's
+                       default (deepseek-v4-flash / qwen2.5:7b for ollama).
+        provider:      'deepseek' (cloud) or 'ollama' (local, no API key needed).
         max_tokens:    Output cap.
 
     Returns:
@@ -99,7 +116,7 @@ def complete(
 
     client = _get_client(provider)
     resp = client.chat.completions.create(
-        model=model or DEFAULT_MODEL,
+        model=model or _default_model_for(provider),
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
