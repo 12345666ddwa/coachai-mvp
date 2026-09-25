@@ -1,7 +1,7 @@
-"""CoachAI LLM 连通性测试 — 真实调用 DeepSeek。
+"""CoachAI LLM connectivity test — real call to DeepSeek.
 
-运行:  python tests/test_llm.py      (或 pytest tests/)
-要求:  ai-coach/.env 中已配置 DEEPSEEK_API_KEY
+Run:      python tests/test_llm.py      (or pytest tests/)
+Requires: DEEPSEEK_API_KEY configured in ai-coach/.env
 """
 import os
 import sys
@@ -17,11 +17,11 @@ def test_deepseek_connectivity() -> None:
         user_prompt="Reply with exactly: PONG",
         temperature=0.0,
     )
-    assert reply, "回复为空 — 模型未返回内容"
-    assert "PONG" in reply.upper(), f"回复中未找到 PONG，实际回复: {reply!r}"
-    print(f"[PASS] 模型回复: {reply!r} (len={len(reply)})")
+    assert reply, "Empty reply — the model returned no content"
+    assert "PONG" in reply.upper(), f"PONG not found in reply; actual reply: {reply!r}"
+    print(f"[PASS] Model reply: {reply!r} (len={len(reply)})")
 
 
 if __name__ == "__main__":
     test_deepseek_connectivity()
-    print("[OK] DeepSeek 连通测试通过")
+    print("[OK] DeepSeek connectivity test passed")

@@ -1,20 +1,22 @@
 """
-CoachAI — 统一模型接入层 (Model Abstraction Layer)
-====================================================
+CoachAI — Model Abstraction Layer
+=================================
 
-设计原则（项目关键约定）:
-    * 所有 agent / graph 只能通过本模块的函数调用大模型，
-      禁止在其它模块直接 `import openai` 或使用其它 SDK。
-    * 未来接入 Gemini / Ollama / Claude 时，只需在本文件
-      `complete()` 内新增一个 provider 分支（并在 _resolve_config
-      中读取对应 base_url / model / key），上层代码零改动。
+Design principles (project-wide conventions):
+    * Every agent / graph must call LLMs only through the functions in this
+      module. Directly `import openai` (or any other SDK) in other modules is
+      forbidden.
+    * When adding Gemini / Ollama / Claude in the future, simply add one more
+      provider branch inside `complete()` (and read the corresponding
+      base_url / model / key in _resolve_config); upstream code needs zero
+      changes.
 
-当前支持:
-    - deepseek : OpenAI 兼容协议 -> https://api.deepseek.com/v1
-    - 配置来源: 项目根目录 .env (DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL)
-               以及本文件顶部常量 DEFAULT_MODEL。
+Currently supported:
+    - deepseek : OpenAI-compatible protocol -> https://api.deepseek.com/v1
+    - Configuration sources: project-root .env (DEEPSEEK_API_KEY /
+      DEEPSEEK_BASE_URL) and the DEFAULT_MODEL constant at the top of this file.
 
-典型用法:
+Typical usage:
     reply = complete("You are a strict HSC marker.",
                      "Mark this essay: ...", temperature=0.2)
 """
@@ -24,16 +26,16 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# 项目根目录 (ai-coach/) 下的 .env
+# .env under the project root (ai-coach/)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # ---------------------------------------------------------------- providers
-# 每个 provider 需要: 环境变量里的 key 名 + 默认 base_url + 默认 model
+# Each provider needs: env-var key name + default base_url + default model
 PROVIDER_ENV_KEY = {
     "deepseek": "DEEPSEEK_API_KEY",
-    # "gemini": "GEMINI_API_KEY",   # 未来: 新增一行 + 下方一个分支
-    # "ollama": "OLLAMA_API_KEY",   # 未来: base_url 指向本地 11434/v1
+    # "gemini": "GEMINI_API_KEY",   # future: add one line + one branch below
+    # "ollama": "OLLAMA_API_KEY",   # future: base_url points to local 11434/v1
 }
 
 PROVIDER_DEFAULT_BASE_URL = {
@@ -48,13 +50,13 @@ _client_cache: dict = {}
 
 
 def _get_client(provider: str = "deepseek") -> OpenAI:
-    """按 provider 返回(缓存的) OpenAI 兼容客户端。"""
+    """Return a (cached) OpenAI-compatible client for the given provider."""
     if provider not in _client_cache:
         key = os.getenv(PROVIDER_ENV_KEY[provider], "")
         if not key:
             raise RuntimeError(
-                f"[models.py] 缺少 {PROVIDER_ENV_KEY[provider]}，"
-                f"请检查 {BASE_DIR}/.env 是否已配置。"
+                f"[models.py] Missing {PROVIDER_ENV_KEY[provider]}; "
+                f"please check that {BASE_DIR}/.env is configured."
             )
         _client_cache[provider] = OpenAI(
             api_key=key,
@@ -74,24 +76,26 @@ def complete(
     max_tokens: int = 4096,
 ) -> str:
     """
-    统一模型调用入口。
+    Unified model-call entry point.
 
     Args:
-        system_prompt: 系统提示词（角色 / 评分标准等）。
-        user_prompt:   用户/学生内容。
-        temperature:   采样温度，批改任务建议 0~0.3 保证一致性。
-        model:         覆盖默认模型名；None 时用 DEFAULT_MODEL。
-        provider:      'deepseek'（未来可扩展 'gemini' / 'ollama'）。
-        max_tokens:    输出上限。
+        system_prompt: System prompt (role / marking criteria, etc.).
+        user_prompt:   User / student content.
+        temperature:   Sampling temperature; 0~0.3 is recommended for marking
+                       tasks to keep results consistent.
+        model:         Override the default model name; None uses DEFAULT_MODEL.
+        provider:      'deepseek' (extensible to 'gemini' / 'ollama' later).
+        max_tokens:    Output cap.
 
     Returns:
-        模型回复文本（已 strip）。
+        The model's reply text (stripped).
 
     Raises:
-        RuntimeError: provider 不支持、缺少 API key 或调用失败时。
+        RuntimeError: on unsupported provider, missing API key, or call
+                      failure.
     """
     if provider not in PROVIDER_ENV_KEY:
-        raise RuntimeError(f"[models.py] 不支持的 provider: {provider}")
+        raise RuntimeError(f"[models.py] Unsupported provider: {provider}")
 
     client = _get_client(provider)
     resp = client.chat.completions.create(
@@ -107,9 +111,9 @@ def complete(
         text = resp.choices[0].message.content
     except (IndexError, AttributeError) as exc:  # pragma: no cover
         raise RuntimeError(
-            f"[models.py] 响应格式异常: {exc} | {resp}"
+            f"[models.py] Unexpected response format: {exc} | {resp}"
         ) from exc
     if not text:
-        raise RuntimeError("[models.py] 模型返回了空内容 (finish_reason="
+        raise RuntimeError("[models.py] Model returned empty content (finish_reason="
                            f"{resp.choices[0].finish_reason})")
     return text.strip()

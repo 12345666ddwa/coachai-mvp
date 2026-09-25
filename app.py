@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-CoachAI — Gradio 批改前端
+CoachAI — Gradio marking frontend
 ==========================
-题目选择 + 学生答案输入 + AI 批改结果展示。
-视觉对齐 demo/index.html：暖白底 #FAFAF7 / 深蓝 #1F4E79 / 橙 #E69F00 / 白底圆角卡片。
-支持 中 / EN 界面切换（文案存于 I18N dict）。
+Question picker + student answer input + AI marking result display.
+Visual language matches demo/index.html: warm paper #FAFAF7 / deep ink #1F4E79 / orange #E69F00 / white cards.
+Supports CN / EN interface switching (all strings live in the I18N dict).
 
-后端约定（尚未实现时自动给出中文友好提示，不崩溃）：
+Backend contract (shows a friendly error card instead of crashing when unavailable):
     from graphs.mark_graph import mark_answer
     result = mark_answer(question_id, student_answer) -> {
         "question_id", "status": "approved"|"flagged"|"error",
@@ -14,7 +14,7 @@ CoachAI — Gradio 批改前端
         "feedback": [{"type": "good"|"improve"|"rule", "text"}],
         "flags": [], "attempts", "justification"}
 
-启动：  python app.py   （默认 http://127.0.0.1:7860）
+Run:  python app.py   (defaults to http://127.0.0.1:7860)
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ QUESTIONS_PATH = BASE_DIR / "data" / "questions.json"
 CUSTOM_QUESTIONS_PATH = BASE_DIR / "data" / CUSTOM_FILE
 GOLDEN_PATH = BASE_DIR / "tests" / "golden_set.json"
 
-# ---------------------------------------------------------------- i18n 文案
+# ---------------------------------------------------------------- i18n strings
 I18N = {
     "zh": {
         "title": "CoachAI — HSC Enterprise Computing 智能批改",
@@ -99,7 +99,7 @@ I18N = {
         "add_q_btn": "保存题目",
         "add_q_ok": "已保存：{qid}（可在题目下拉框中选用）",
         "add_q_err": "保存失败：题干、分值和评分标准均为必填。",
-        # ---- Phase 4: 教案规划 tab ----
+        # ---- Phase 4: Lesson planner tab ----
         "tab_mark": "批改",
         "tab_lesson": "教案规划",
         "lp_year_label": "年级",
@@ -124,7 +124,7 @@ I18N = {
         "lp_meta_ref": "参考材料 {n} 字",
         "lp_meta_rag_on": "已引用 NESA TSR 材料",
         "lp_meta_rag_off": "未引用 TSR 材料",
-        # ---- Phase 5: 学生 tab（追踪画像 + 报告评语） ----
+        # ---- Phase 5: Students tab (progress profile + report comments) ----
         "tab_students": "学生",
         "st_student_label": "选择学生",
         "st_student_ph": "从学生名单选择…",
@@ -159,7 +159,7 @@ I18N = {
         "st_err_no_student": "请先选择学生。",
         "st_err_backend": "学生模块尚未就绪：无法导入 agents.tracker / agents.report_writer。",
         "st_err_unknown": "生成失败：",
-        # ---- Phase 6a: 练习 / 答疑 tab（学生端） ----
+        # ---- Phase 6a: Practice / Ask tab (student side) ----
         "tab_practice": "练习 / 答疑",
         "cp_year_label": "年级",
         "cp_module_label": "模块（focus area）",
@@ -191,7 +191,7 @@ I18N = {
         "cp_no_sources": "本次未检索到 NESA 材料，回答已注明材料未涵盖的部分。",
         "cp_note_head": "小提示",
         "cp_err_no_q": "请先输入问题再提问。",
-        # ---- Phase 6b: 课堂分析 tab（教师端） ----
+        # ---- Phase 6b: Lesson review tab (teacher side) ----
         "tab_review": "课堂分析",
         "tr_year_label": "年级",
         "tr_module_label": "模块（focus area，可选）",
@@ -418,9 +418,9 @@ STATUS_STYLE = {
     "error": ("#C62828", "#FBEAEA", "#C62828"),
 }
 
-# ---------------------------------------------------------------- 数据加载
+# ---------------------------------------------------------------- Data loading
 def load_questions() -> list[dict]:
-    """官方题库 + 老师自建题（custom 排在后）/ official bank + custom questions."""
+    """Official bank + teacher-authored custom questions (custom appended last)."""
     return load_all_questions([QUESTIONS_PATH, CUSTOM_QUESTIONS_PATH])
 
 
@@ -439,7 +439,7 @@ def q_choices(questions: list[dict], lang: str) -> list[tuple[str, str]]:
 
 
 def _extract_examples(raw) -> dict[str, dict[str, list[str]]]:
-    """把 golden_set.json（结构尽量宽容）解析成 {qid: {'good': [...], 'bad': [...]}}。"""
+    """Parse golden_set.json (tolerant to structure variations) into {qid: {'good': [...], 'bad': [...]}}."""
     examples: dict[str, dict[str, list[str]]] = {}
 
     def add(qid, text, quality="good"):
@@ -484,7 +484,7 @@ def _extract_examples(raw) -> dict[str, dict[str, list[str]]]:
 
 
 def load_examples() -> dict[str, dict[str, list[str]]]:
-    """优先 tests/golden_set.json；不存在则退回题库自带 sample_answers（作为 good 示例）。"""
+    """Prefer tests/golden_set.json; fall back to the bank's own sample_answers as good examples."""
     examples: dict[str, dict[str, list[str]]] = {}
     if GOLDEN_PATH.exists():
         try:
@@ -492,7 +492,7 @@ def load_examples() -> dict[str, dict[str, list[str]]]:
             examples = _extract_examples(raw)
         except Exception as e:  # noqa: BLE001
             print(f"[app] golden_set.json 解析失败: {e}", file=sys.stderr)
-    if not examples:  # 退回题库内嵌 sample_answers
+    if not examples:  # fall back to sample_answers embedded in the question bank
         for q in load_questions():
             samples = [s for s in q.get("sample_answers", []) if s]
             if samples:
@@ -519,7 +519,7 @@ def q_preview_md(qid: str, lang: str) -> str:
                     f'{str(q.get("text", "")).replace(chr(10), "<br>")}')
     return qid
 
-# ---------------------------------------------------------------- 渲染
+# ---------------------------------------------------------------- Rendering
 def render_result_html(res: dict, qid: str, lang: str) -> str:
     """Render mark_answer result as a designed result card (no emoji, crisp editorial style)."""
     L = I18N[lang]
@@ -611,7 +611,7 @@ def err_card(title: str, hint: str = "") -> str:
         html_ += f'<div class="hint">{hint}</div>'
     return html_ + "</div>"
 
-# ---------------------------------------------------------------- 教案规划（Phase 4）
+# ---------------------------------------------------------------- Lesson planner (Phase 4)
 def lp_modules(year: str) -> list:
     """Focus-area names for a year, straight from data/syllabus.json ([] on failure)."""
     try:
@@ -712,9 +712,9 @@ def render_plan_html(plan: dict, lang: str) -> str:
     h.append('</div>')
     return "".join(h)
 
-# ---------------------------------------------------------------- 业务逻辑
+# ---------------------------------------------------------------- Business logic
 def mark_answer_safe(qid: str, answer: str, lang: str):
-    """调用后端；import 失败 / status=error / 其他异常 → 返回友好错误卡片。"""
+    """Call the backend; import failure / status=error / other exceptions -> friendly error card."""
     L = I18N[lang]
     if not qid:
         return err_card(L["err_empty"]), None
@@ -760,7 +760,7 @@ def mark_answer_safe(qid: str, answer: str, lang: str):
         return err_card(f'{L["status_error"]} — {msg}'), res
     return render_result_html(res, qid, lang), res
 
-# ---------------------------------------------------------------- 教案业务逻辑
+# ---------------------------------------------------------------- Lesson planner logic
 def generate_plan_safe(dot_points, reference_text, year, duration_min, focus_area, ui_lang):
     """Generate one lesson plan; engine/LLM failures come back as friendly cards."""
     L = I18N.get(ui_lang, I18N["en"])
@@ -787,7 +787,7 @@ def generate_plan_safe(dot_points, reference_text, year, duration_min, focus_are
         return err_card(f'{L["lp_err_unknown"]} {e}')
     return render_plan_html(plan, plan_lang)
 
-# ---------------------------------------------------------------- 学生追踪（Phase 5）
+# ---------------------------------------------------------------- Students (Phase 5)
 # Trend tag colours: improving / stable / declining / volatile / not enough data.
 ST_TREND_COLOR = {
     "improving": "#2F6D4F",
@@ -969,7 +969,7 @@ def st_save_safe(report, lang: str):
                                  period=report.get("period") or "-"),
             gr.update(interactive=False))
 
-# ---------------------------------------------------------------- 练习 / 答疑（Phase 6a）
+# ---------------------------------------------------------------- Practice / Ask (Phase 6a)
 def render_practice_empty(lang: str) -> str:
     return f'<div class="plan-empty">{I18N.get(lang, I18N["en"])["cp_empty"]}</div>'
 
@@ -1099,7 +1099,7 @@ def answer_question_safe(student_question, context_note, year, ui_lang):
         return err_card(f'{L["cp_err_unknown"]} empty answer')
     return render_answer_html(result, ui_lang)
 
-# ---------------------------------------------------------------- 课堂分析（Phase 6b）
+# ---------------------------------------------------------------- Lesson review (Phase 6b)
 def tr_module_choices(year: str) -> list:
     """(label, value) pairs for the review-tab module filter; "" = whole year."""
     return [("全部模块 / All modules", "")] + [(m, m) for m in lp_modules(year)]
@@ -1238,7 +1238,7 @@ def tr_analyze_safe(transcript_text, year, focus_area, lang):
     meta = {"year": year, "focus_area": focus_area, "chars": len(text)}
     return _tr_analyze_safe(text, year, focus_area, lang, meta=meta), status
 
-# ---------------------------------------------------------------- Gradio 界面
+# ---------------------------------------------------------------- Gradio UI
 PAGE_CSS = """
 :root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#143A5C;
         --orange:#E69F00; --orange-deep:#C77F00; --line:#E8E2D8; --card:#FFFFFF;
@@ -1525,7 +1525,7 @@ def build_ui() -> gr.Blocks:
         # Phase 5: the last generated report comment, held for "save to records".
         st_last_report = gr.State(None)
 
-        # ---------- 顶部：品牌 + 语言切换 ----------
+        # ---------- Top: brand + language switch ----------
         with gr.Row(elem_id="coach-header"):
             with gr.Column(scale=4):
                 title_md = gr.Markdown(
@@ -1537,31 +1537,31 @@ def build_ui() -> gr.Blocks:
                 lang_radio = gr.Radio(["中文", "EN"], value="中文", show_label=False,
                                       interactive=True, elem_id="lang-select")
 
-        # ================= 标签页：批改 / 教案规划 =================
+        # ================= Tabs: Marking / Lesson planner =================
         with gr.Tabs(elem_id="coach-tabs"):
-            # -------------------------------------------------- Tab 1: 批改
+            # -------------------------------------------------- Tab 1: Marking
             with gr.Tab(I18N["zh"]["tab_mark"], id="tab-mark") as tab_mark:
-                # ---------- 1. 选题 ----------
+                # ---------- 1. Question picker ----------
                 with gr.Group(elem_classes="panel"):
                     q_dropdown = gr.Dropdown(choices=q_choices(questions, "zh"), value=questions[0]["id"] if questions else None,
                                              label=I18N["zh"]["q_label"], elem_id="q-drop")
                     q_preview = gr.Markdown(q_preview_md(questions[0]["id"], "zh") if questions else "", elem_id="q-preview")
 
-                # ---------- 2. 答案 ----------
+                # ---------- 2. Answer ----------
                 with gr.Group(elem_classes="panel"):
                     ans_box = gr.Textbox(label=I18N["zh"]["ans_label"], lines=7, placeholder=I18N["zh"]["ans_ph"],
                                          elem_id="ans-box")
                     ex_radio = gr.Radio([I18N["zh"]["ex_good"], I18N["zh"]["ex_bad"]], label=I18N["zh"]["ex_label"],
                                         value=None, elem_id="ex-radio")
 
-                # ---------- 3. 批改 ----------
+                # ---------- 3. Mark ----------
                 mark_btn = gr.Button(I18N["zh"]["mark_btn"], variant="primary", elem_id="mark-btn", size="lg")
                 result_md = gr.Markdown()
                 raw_accord = gr.Accordion(I18N["zh"]["raw_label"], open=False, elem_classes="panel")
                 with raw_accord:
                     raw_json = gr.JSON(value=None, show_label=False)
 
-                # ---------- 4. 自建题目（老师录入，默认收起） ----------
+                # ---------- 4. Custom question form (collapsed by default) ----------
                 with gr.Accordion(I18N["zh"]["add_q_label"], open=False,
                                   elem_classes="panel", elem_id="add-q") as add_accord:
                     cq_note = gr.Markdown(I18N["zh"]["add_q_note"], elem_id="add-q-note")
@@ -1576,7 +1576,7 @@ def build_ui() -> gr.Blocks:
                     cq_save = gr.Button(I18N["zh"]["add_q_btn"], elem_id="add-q-btn")
                     cq_status = gr.Markdown("", elem_id="add-q-status")
 
-            # -------------------------------------------------- Tab 2: 教案规划
+            # -------------------------------------------------- Tab 2: Lesson planner
             with gr.Tab(I18N["zh"]["tab_lesson"], id="tab-lesson") as tab_lesson:
                 _lp_year0 = "Year 11"
                 _lp_mods0 = lp_modules(_lp_year0)
@@ -1604,12 +1604,12 @@ def build_ui() -> gr.Blocks:
                                    elem_id="lp-gen-btn", size="lg")
                 lp_result = gr.HTML(render_plan_empty("zh"), elem_id="lp-result")
 
-            # -------------------------------------------------- Tab 3: 学生
+            # -------------------------------------------------- Tab 3: Students
             with gr.Tab(I18N["zh"]["tab_students"], id="tab-students") as tab_students:
                 _st_students0 = store_db.list_students()
                 _st_choices0 = st_student_choices(_st_students0, "zh")
 
-                # ---------- 区块 A：追踪画像 ----------
+                # ---------- Block A: progress profile ----------
                 with gr.Group(elem_classes="panel"):
                     st_student = gr.Dropdown(
                         choices=_st_choices0,
@@ -1619,7 +1619,7 @@ def build_ui() -> gr.Blocks:
                                                elem_id="st-analyze-btn", size="lg")
                     st_profile = gr.HTML(render_profile_empty("zh"), elem_id="st-profile")
 
-                # ---------- 区块 B：报告评语 ----------
+                # ---------- Block B: report comment ----------
                 with gr.Group(elem_classes="panel"):
                     st_period = gr.Textbox(label=I18N["zh"]["st_period_label"],
                                            value="Term 3 2026", placeholder=I18N["zh"]["st_period_ph"],
@@ -1633,14 +1633,14 @@ def build_ui() -> gr.Blocks:
                                             interactive=False)
                     st_status = gr.Markdown("", elem_id="st-status")
 
-            # -------------------------------------------------- Tab 4: 练习 / 答疑
+            # -------------------------------------------------- Tab 4: Practice / Ask
             with gr.Tab(I18N["zh"]["tab_practice"], id="tab-practice") as tab_practice:
                 _cp_year0 = "Year 11"
                 _cp_mods0 = lp_modules(_cp_year0)
                 _cp_mod0 = _cp_mods0[0] if _cp_mods0 else None
                 _cp_dps0 = lp_dot_point_choices(_cp_year0, _cp_mod0) if _cp_mod0 else []
 
-                # ---------- 区块 A：生成练习 ----------
+                # ---------- Block A: generate practice ----------
                 with gr.Group(elem_classes="panel"):
                     cp_year = gr.Radio(["Year 11", "Year 12"], value=_cp_year0,
                                        label=I18N["zh"]["cp_year_label"], elem_id="cp-year")
@@ -1660,7 +1660,7 @@ def build_ui() -> gr.Blocks:
                                        elem_id="cp-gen-btn", size="lg")
                 cp_result = gr.HTML(render_practice_empty("zh"), elem_id="cp-result")
 
-                # ---------- 区块 B：提问 ----------
+                # ---------- Block B: ask a question ----------
                 with gr.Group(elem_classes="panel"):
                     cp_q_box = gr.Textbox(label=I18N["zh"]["cp_q_label"], lines=4,
                                           placeholder=I18N["zh"]["cp_q_ph"],
@@ -1672,11 +1672,11 @@ def build_ui() -> gr.Blocks:
                                        elem_id="cp-ask-btn", size="lg")
                 cp_answer = gr.HTML(render_answer_empty("zh"), elem_id="cp-answer")
 
-            # -------------------------------------------------- Tab 5: 课堂分析
+            # -------------------------------------------------- Tab 5: Lesson review
             with gr.Tab(I18N["zh"]["tab_review"], id="tab-review") as tab_review:
                 _tr_year0 = "Year 11"
 
-                # ---------- 区块 A：分析范围（年级 + 可选模块） ----------
+                # ---------- Block A: scope (year + optional module) ----------
                 with gr.Group(elem_classes="panel"):
                     tr_year = gr.Radio(["Year 11", "Year 12"], value=_tr_year0,
                                        label=I18N["zh"]["tr_year_label"], elem_id="tr-year")
@@ -1684,7 +1684,7 @@ def build_ui() -> gr.Blocks:
                                             label=I18N["zh"]["tr_module_label"],
                                             elem_id="tr-module")
 
-                # ---------- 区块 B：上传录音 -> 转录并分析 ----------
+                # ---------- Block B: upload audio, then transcribe and analyse ----------
                 with gr.Group(elem_classes="panel"):
                     tr_audio = gr.Audio(sources=["upload"], type="filepath",
                                         label=I18N["zh"]["tr_audio_label"],
@@ -1693,7 +1693,7 @@ def build_ui() -> gr.Blocks:
                                                   variant="primary",
                                                   elem_id="tr-transcribe-btn", size="lg")
 
-                # ---------- 区块 C：粘贴转录文本 -> 直接分析 ----------
+                # ---------- Block C: paste transcript, analyse directly ----------
                 with gr.Group(elem_classes="panel"):
                     tr_text = gr.Textbox(label=I18N["zh"]["tr_text_label"], lines=8,
                                          placeholder=I18N["zh"]["tr_text_ph"],
@@ -1705,7 +1705,7 @@ def build_ui() -> gr.Blocks:
                 tr_status = gr.Markdown("", elem_id="tr-status")
                 tr_result = gr.HTML(render_review_empty("zh"), elem_id="tr-result")
 
-        # ---------- 语言切换 ----------
+        # ---------- Language switch ----------
         def set_lang(lang_choice, cur_qid, lp_selected, cp_selected):
             lang = "en" if lang_choice == "EN" else "zh"
             L = I18N[lang]
@@ -1792,7 +1792,7 @@ def build_ui() -> gr.Blocks:
                                    cp_ask_btn, tab_review, tr_year, tr_module, tr_audio,
                                    tr_transcribe_btn, tr_text, tr_analyze_btn])
 
-        # ---------- 示例答案填充 ----------
+        # ---------- Sample answer fill ----------
         def on_q_change(qid, lang):
             if not qid:
                 return qid, gr.update(value=qid), ""
@@ -1815,7 +1815,7 @@ def build_ui() -> gr.Blocks:
         ex_radio.select(fn=fill_example, inputs=[ex_radio, qid_state, lang_state],
                         outputs=[ans_box, ex_radio])
 
-        # ---------- 自建题目：保存 + 刷新下拉框 ----------
+        # ---------- Custom question: save and refresh dropdown ----------
         def on_save_question(text, marks, criteria, sample, lang, cur_qid):
             """Persist a teacher-authored question, refresh the dropdown and preview."""
             L = I18N.get(lang, I18N["en"])
@@ -1848,7 +1848,7 @@ def build_ui() -> gr.Blocks:
                       outputs=[q_dropdown, qid_state, q_preview, cq_status,
                                cq_text, cq_marks, cq_criteria, cq_sample])
 
-        # ---------- 批改 ----------
+        # ---------- Marking ----------
         def on_mark(qid, answer, lang):
             html_out, raw = mark_answer_safe(qid, answer, lang)
             return html_out, raw
@@ -1859,7 +1859,7 @@ def build_ui() -> gr.Blocks:
         q_dropdown.change(fn=on_q_change, inputs=[q_dropdown, lang_state],
                           outputs=[qid_state, q_dropdown, q_preview])
 
-        # ---------- 教案规划：联动 + 生成 ----------
+        # ---------- Lesson planner: cascades and generate ----------
         def on_lp_year_change(year, lang):
             """Year change -> refresh module dropdown and dot point checkboxes."""
             mods = lp_modules(year)
@@ -1885,7 +1885,7 @@ def build_ui() -> gr.Blocks:
                      inputs=[lp_dots, lp_ref, lp_year, lp_dur, lp_module, lang_state],
                      outputs=[lp_result])
 
-        # ---------- 学生（Phase 5）：切换学生清空结果 / 分析 / 生成 / 保存 ----------
+        # ---------- Students (Phase 5): reset on switch / analyse / generate / save ----------
         def on_student_change(student_id, lang):
             """Switching student resets both result areas to their placeholders."""
             return (render_profile_empty(lang), render_report_empty(lang), "", None,
@@ -1905,7 +1905,7 @@ def build_ui() -> gr.Blocks:
         st_save_btn.click(fn=st_save_safe, inputs=[st_last_report, lang_state],
                           outputs=[st_status, st_save_btn])
 
-        # ---------- 练习 / 答疑（Phase 6a）：联动 + 出题 + 提问 ----------
+        # ---------- Practice / Ask (Phase 6a): cascades / generate / ask ----------
         def on_cp_year_change(year, lang):
             """Year change -> refresh module dropdown and dot point checkboxes."""
             mods = lp_modules(year)
@@ -1934,7 +1934,7 @@ def build_ui() -> gr.Blocks:
                          inputs=[cp_q_box, cp_context, cp_year, lang_state],
                          outputs=[cp_answer])
 
-        # ---------- 课堂分析（Phase 6b）：模块联动 + 转录分析 / 粘贴分析 ----------
+        # ---------- Lesson review (Phase 6b): module cascade / transcribe / paste analysis ----------
         def on_tr_year_change(year, lang):
             """Year change -> refresh the module filter (whole year by default)."""
             return gr.update(choices=tr_module_choices(year), value="")
