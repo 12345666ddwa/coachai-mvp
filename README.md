@@ -23,7 +23,7 @@ NESA materials -> vector store -> [RAG] -> LangGraph state machine:
 `load question -> retrieve -> grade (Marker, T=0.5) -> verify (Verifier, T=0.2) -> approve / retry (<=2) / flag for teacher`
 
 All LLM calls go through `agents/models.py complete()` — swapping providers (DeepSeek now,
-Gemini free tier / local Ollama later) is one config line.
+Gemini free tier / local Ollama) is one config line.
 
 See `docs/figures/` for architecture diagrams.
 
