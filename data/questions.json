@@ -54,7 +54,7 @@
     },
     {
       "id": "ec2025-q15a",
-      "text": "The following are three tables from an IT company's relational sales database.\n\nCustomers\n  CustID | FirstN | LastN | Email | Phone\n  001 | Abraham | Li | a.li@example.com | 555-0101\n  002 | Sophia | Smith | s.smith@example.com | 555-0102\n  003 | Priya | Singh | p.singh@example.com | 555-0103\n\nProducts\n  ProdID | ProdN | Category | Price | Quantity\n  LP1 | Laptop | Electronics | 1200 | 30\n  OC31 | Office Chair | Furniture | 200 | 20\n  HP43 | Headphones | Electronics | 150 | 100\n  SP5 | Smartphone | Electronics | 800 | 50\n\nSales\n  SaleID | CustID | ProdID | SaleDate | Quantity | TotalCost\n  1 | 001 | LP1 | 17-01-2025 | 1 | 1200\n  2 | 002 | SP5 | 16-01-2025 | 2 | 1600\n  3 | 001 | HP43 | 15-01-2025 | 3 | 450\n  4 | 003 | OC31 | 18-01-2025 | 1 | 200\n  5 | 003 | OC31 | 14-01-2025 | 2 | 400\n  6 | 002 | SP5 | 18-01-2025 | 1 | 800\n\n(a) Use the dropdown lists provided to identify the correct key types, and the relationship types between tables. (2 marks)\nPK = Primary key, FK = Foreign key.\nFor each field in the three tables (e.g. Customers.CustID, Sales.SaleID, Sales.CustID, Products.ProdID, Sales.ProdID), select PK or FK; and for the relationships Customers–Sales and Sales–Products select the cardinality (1 or many).\n[附注：下拉选择在官方在线试卷中交互完成：https://fam.hsconline.nesa.nsw.edu.au/]",
+      "text": "The following are three tables from an IT company's relational sales database.\n\nCustomers\n  CustID | FirstN | LastN | Email | Phone\n  001 | Abraham | Li | a.li@example.com | 555-0101\n  002 | Sophia | Smith | s.smith@example.com | 555-0102\n  003 | Priya | Singh | p.singh@example.com | 555-0103\n\nProducts\n  ProdID | ProdN | Category | Price | Quantity\n  LP1 | Laptop | Electronics | 1200 | 30\n  OC31 | Office Chair | Furniture | 200 | 20\n  HP43 | Headphones | Electronics | 150 | 100\n  SP5 | Smartphone | Electronics | 800 | 50\n\nSales\n  SaleID | CustID | ProdID | SaleDate | Quantity | TotalCost\n  1 | 001 | LP1 | 17-01-2025 | 1 | 1200\n  2 | 002 | SP5 | 16-01-2025 | 2 | 1600\n  3 | 001 | HP43 | 15-01-2025 | 3 | 450\n  4 | 003 | OC31 | 18-01-2025 | 1 | 200\n  5 | 003 | OC31 | 14-01-2025 | 2 | 400\n  6 | 002 | SP5 | 18-01-2025 | 1 | 800\n\n(a) Use the dropdown lists provided to identify the correct key types, and the relationship types between tables. (2 marks)\nPK = Primary key, FK = Foreign key.\nFor each field in the three tables (e.g. Customers.CustID, Sales.SaleID, Sales.CustID, Products.ProdID, Sales.ProdID), select PK or FK; and for the relationships Customers–Sales and Sales–Products select the cardinality (1 or many).\n[Note: the dropdown selection is performed interactively in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]",
       "marks": 2,
       "marking_guidelines": [
         {
@@ -75,7 +75,7 @@
     },
     {
       "id": "ec2025-q15b",
-      "text": "The following are three tables from an IT company's relational sales database.\n\nCustomers\n  CustID | FirstN | LastN | Email | Phone\n  001 | Abraham | Li | a.li@example.com | 555-0101\n  002 | Sophia | Smith | s.smith@example.com | 555-0102\n  003 | Priya | Singh | p.singh@example.com | 555-0103\n\nProducts\n  ProdID | ProdN | Category | Price | Quantity\n  LP1 | Laptop | Electronics | 1200 | 30\n  OC31 | Office Chair | Furniture | 200 | 20\n  HP43 | Headphones | Electronics | 150 | 100\n  SP5 | Smartphone | Electronics | 800 | 50\n\nSales\n  SaleID | CustID | ProdID | SaleDate | Quantity | TotalCost\n  1 | 001 | LP1 | 17-01-2025 | 1 | 1200\n  2 | 002 | SP5 | 16-01-2025 | 2 | 1600\n  3 | 001 | HP43 | 15-01-2025 | 3 | 450\n  4 | 003 | OC31 | 18-01-2025 | 1 | 200\n  5 | 003 | OC31 | 14-01-2025 | 2 | 400\n  6 | 002 | SP5 | 18-01-2025 | 1 | 800\n\n(b) Write an SQL query to display all sales from the electronics category prior to 17-01-2025 in ascending date order, including LastN, ProdN, SaleDate and TotalCost. (4 marks)\n[附注：考场提供可运行 SQL 沙箱（Run DB），官方在线试卷可见。]",
+      "text": "The following are three tables from an IT company's relational sales database.\n\nCustomers\n  CustID | FirstN | LastN | Email | Phone\n  001 | Abraham | Li | a.li@example.com | 555-0101\n  002 | Sophia | Smith | s.smith@example.com | 555-0102\n  003 | Priya | Singh | p.singh@example.com | 555-0103\n\nProducts\n  ProdID | ProdN | Category | Price | Quantity\n  LP1 | Laptop | Electronics | 1200 | 30\n  OC31 | Office Chair | Furniture | 200 | 20\n  HP43 | Headphones | Electronics | 150 | 100\n  SP5 | Smartphone | Electronics | 800 | 50\n\nSales\n  SaleID | CustID | ProdID | SaleDate | Quantity | TotalCost\n  1 | 001 | LP1 | 17-01-2025 | 1 | 1200\n  2 | 002 | SP5 | 16-01-2025 | 2 | 1600\n  3 | 001 | HP43 | 15-01-2025 | 3 | 450\n  4 | 003 | OC31 | 18-01-2025 | 1 | 200\n  5 | 003 | OC31 | 14-01-2025 | 2 | 400\n  6 | 002 | SP5 | 18-01-2025 | 1 | 800\n\n(b) Write an SQL query to display all sales from the electronics category prior to 17-01-2025 in ascending date order, including LastN, ProdN, SaleDate and TotalCost. (4 marks)\n[Note: the exam provides a runnable SQL sandbox (Run DB), visible in the official online exam.]",
       "marks": 4,
       "marking_guidelines": [
         {
@@ -222,7 +222,7 @@
     },
     {
       "id": "ec2025-q18",
-      "text": "A small car rental business, with five vehicles, wants to use a spreadsheet to keep track of its bookings.\n\nA staff member will enter the driver's name, vehicle size selected (small, medium, large), and the number of days of rental for each vehicle.\n\nThe spreadsheet should automatically provide the following information:\n• daily rate – small ($200), medium ($250), large ($300)\n• discount – a discount of 20% is allowed if the booking is for at least 7 days\n• rental cost – calculated by multiplying the daily rate and the number of days, and allowing for a discount if applicable.\n\nPart of the spreadsheet has been set up. Complete the spreadsheet so that the required information will automatically be displayed when rentals are entered.\n[附注：考场内嵌可操作电子表格（部分已设置），官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]",
+      "text": "A small car rental business, with five vehicles, wants to use a spreadsheet to keep track of its bookings.\n\nA staff member will enter the driver's name, vehicle size selected (small, medium, large), and the number of days of rental for each vehicle.\n\nThe spreadsheet should automatically provide the following information:\n• daily rate – small ($200), medium ($250), large ($300)\n• discount – a discount of 20% is allowed if the booking is for at least 7 days\n• rental cost – calculated by multiplying the daily rate and the number of days, and allowing for a discount if applicable.\n\nPart of the spreadsheet has been set up. Complete the spreadsheet so that the required information will automatically be displayed when rentals are entered.\n[Note: the exam embeds an interactive spreadsheet (partially pre-filled), visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]",
       "marks": 4,
       "marking_guidelines": [
         {
@@ -243,7 +243,7 @@
         }
       ],
       "sample_answers": [
-        "N/A（官方满分样例为电子表格输入/输出截图，无文本参考答案；见 official sample full mark responses PDF）"
+        "N/A (the official full-mark sample is a spreadsheet input/output screenshot with no textual reference answer; see the official sample full mark responses PDF)"
       ],
       "topics": [
         "data science",
@@ -270,7 +270,7 @@
         }
       ],
       "sample_answers": [
-        "N/A（官方满分样例为用户界面设计图，无文本参考答案；见 official sample full mark responses PDF）"
+        "N/A (the official full-mark sample is a user-interface design image with no textual reference answer; see the official sample full mark responses PDF)"
       ],
       "topics": [
         "enterprise project",
@@ -331,7 +331,7 @@
         }
       ],
       "sample_answers": [
-        "N/A（官方满分样例为 DFD 绘图，无文本参考答案；见 official sample full mark responses PDF）"
+        "N/A (the official full-mark sample is a DFD drawing with no textual reference answer; see the official sample full mark responses PDF)"
       ],
       "topics": [
         "enterprise project",
@@ -388,7 +388,7 @@
     },
     {
       "id": "ec2025-q23a",
-      "text": "As a result of advancements in technology, a company now presents employee performance information on a dashboard that is updated using real-time data, rather than spreadsheets. The data dashboard is shown.\n[附注：数据看板（dashboard）图为考试刺激材料，官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]\n\n(a) Describe how advancements in software have empowered data analytics. In your answer, refer to the scenario. (3 marks)",
+      "text": "As a result of advancements in technology, a company now presents employee performance information on a dashboard that is updated using real-time data, rather than spreadsheets. The data dashboard is shown.\n[Note: the dashboard image is exam stimulus material, visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]\n\n(a) Describe how advancements in software have empowered data analytics. In your answer, refer to the scenario. (3 marks)",
       "marks": 3,
       "marking_guidelines": [
         {
@@ -415,7 +415,7 @@
     },
     {
       "id": "ec2025-q23b",
-      "text": "As a result of advancements in technology, a company now presents employee performance information on a dashboard that is updated using real-time data, rather than spreadsheets. The data dashboard is shown.\n[附注：数据看板（dashboard）图为考试刺激材料，官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]\n\n(b) Explain how the visualisations used in the data dashboard provided could affect the management team's user experience and understanding of employee productivity. (4 marks)",
+      "text": "As a result of advancements in technology, a company now presents employee performance information on a dashboard that is updated using real-time data, rather than spreadsheets. The data dashboard is shown.\n[Note: the dashboard image is exam stimulus material, visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]\n\n(b) Explain how the visualisations used in the data dashboard provided could affect the management team's user experience and understanding of employee productivity. (4 marks)",
       "marks": 4,
       "marking_guidelines": [
         {
@@ -479,7 +479,7 @@
     },
     {
       "id": "ec2025-q25",
-      "text": "View the slideshow about applications of decision support systems.\n[附注：slideshow 为考试刺激材料（含 finance/healthcare 等 DSS 应用示例），官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]\n\nExplain how intelligent systems can assist the different categories of decision-making. Support your answer with some examples from the stimulus.",
+      "text": "View the slideshow about applications of decision support systems.\n[Note: the slideshow is exam stimulus material (including DSS application examples such as finance/healthcare), visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]\n\nExplain how intelligent systems can assist the different categories of decision-making. Support your answer with some examples from the stimulus.",
       "marks": 8,
       "marking_guidelines": [
         {

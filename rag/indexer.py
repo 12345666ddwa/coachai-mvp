@@ -21,7 +21,7 @@ from docx.text.paragraph import Paragraph
 from docx.document import Document as _Doc
 
 # ---------------------------------------------------------------- config
-DOCX_DIR = sys.argv[1] if len(sys.argv) > 1 else "/mnt/c/Users/18613/Desktop/新建文件夹"
+DOCX_DIR = sys.argv[1] if len(sys.argv) > 1 else "./tsr_docx"  # pass the TSR .docx folder as argv[1]
 DB_DIR = sys.argv[2] if len(sys.argv) > 2 else "/home/gaogao/workspace/ai-coach/data/chroma_db"
 COLLECTION = sys.argv[3] if len(sys.argv) > 3 else "tsr_docs"
 

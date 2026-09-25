@@ -85,7 +85,7 @@ add(
  "types between tables. (2 marks)\nPK = Primary key, FK = Foreign key.\n"
  "For each field in the three tables (e.g. Customers.CustID, Sales.SaleID, Sales.CustID, Products.ProdID, "
  "Sales.ProdID), select PK or FK; and for the relationships Customers–Sales and Sales–Products select the "
- "cardinality (1 or many).\n[附注：下拉选择在官方在线试卷中交互完成：https://fam.hsconline.nesa.nsw.edu.au/]",
+ "cardinality (1 or many).\n[Note: the dropdown selection is performed interactively in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]",
  2,
  [{"band": "2", "criteria": "Correctly completes ALL the dropdowns"},
   {"band": "1", "criteria": "Correctly completes FOUR of the dropdowns"}],
@@ -95,7 +95,7 @@ add(
  "ec2025-q15b",
  q15_scenario + "\n\n(b) Write an SQL query to display all sales from the electronics category prior to "
  "17-01-2025 in ascending date order, including LastN, ProdN, SaleDate and TotalCost. (4 marks)\n"
- "[附注：考场提供可运行 SQL 沙箱（Run DB），官方在线试卷可见。]",
+ "[Note: the exam provides a runnable SQL sandbox (Run DB), visible in the official online exam.]",
  4,
  [{"band": "4", "criteria": "Provides a correct SQL query"},
   {"band": "3", "criteria": "Provides a SQL query that addresses most of the requirements"},
@@ -178,14 +178,14 @@ add(
  "• rental cost – calculated by multiplying the daily rate and the number of days, and allowing for a discount "
  "if applicable.\n\nPart of the spreadsheet has been set up. Complete the spreadsheet so that the required "
  "information will automatically be displayed when rentals are entered.\n"
- "[附注：考场内嵌可操作电子表格（部分已设置），官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]",
+ "[Note: the exam embeds an interactive spreadsheet (partially pre-filled), visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]",
  4,
  [{"band": "4", "criteria": "Completes the spreadsheet, addressing all the requirements – allows input of driver's name and number of days; allows input or selection of vehicle sizes; automatically generates daily rate, discount and rental cost"},
   {"band": "3", "criteria": "Completes the spreadsheet, addressing most of the requirements"},
   {"band": "2", "criteria": "Provides some correct information and an appropriate formula for the spreadsheet"},
   {"band": "1", "criteria": "Provides some relevant information"}],
  ["data science", "spreadsheet features", "spreadsheet formulas"],
- ["N/A（官方满分样例为电子表格输入/输出截图，无文本参考答案；见 official sample full mark responses PDF）"],
+ ["N/A (the official full-mark sample is a spreadsheet input/output screenshot with no textual reference answer; see the official sample full mark responses PDF)"],
 )
 
 # ---------------- Q19 (3 marks, UI design) ----------------
@@ -199,7 +199,7 @@ add(
   {"band": "2", "criteria": "Designs a user interface with some relevant features"},
   {"band": "1", "criteria": "Provides some relevant information"}],
  ["enterprise project", "prototypes", "user interface design"],
- ["N/A（官方满分样例为用户界面设计图，无文本参考答案；见 official sample full mark responses PDF）"],
+ ["N/A (the official full-mark sample is a user-interface design image with no textual reference answer; see the official sample full mark responses PDF)"],
 )
 
 # ---------------- Q20 (3 marks, data visualisation - spreadsheet features) ----------------
@@ -232,7 +232,7 @@ add(
   {"band": "2", "criteria": "Provides a diagram that shows some understanding of the problem OR identifies the key components of a data flow diagram"},
   {"band": "1", "criteria": "Provides some relevant information"}],
  ["enterprise project", "data flow diagrams"],
- ["N/A（官方满分样例为 DFD 绘图，无文本参考答案；见 official sample full mark responses PDF）"],
+ ["N/A (the official full-mark sample is a DFD drawing with no textual reference answer; see the official sample full mark responses PDF)"],
 )
 
 # ---------------- Q22 (a/b, enterprise project / data security) ----------------
@@ -266,7 +266,7 @@ add(
 q23_scenario = (
  "As a result of advancements in technology, a company now presents employee performance information on a "
  "dashboard that is updated using real-time data, rather than spreadsheets. The data dashboard is shown.\n"
- "[附注：数据看板（dashboard）图为考试刺激材料，官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]"
+ "[Note: the dashboard image is exam stimulus material, visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]"
 )
 add(
  "ec2025-q23a",
@@ -312,7 +312,7 @@ add(
 add(
  "ec2025-q25",
  "View the slideshow about applications of decision support systems.\n"
- "[附注：slideshow 为考试刺激材料（含 finance/healthcare 等 DSS 应用示例），官方在线试卷可见：https://fam.hsconline.nesa.nsw.edu.au/]\n\n"
+ "[Note: the slideshow is exam stimulus material (including DSS application examples such as finance/healthcare), visible in the official online exam: https://fam.hsconline.nesa.nsw.edu.au/]\n\n"
  "Explain how intelligent systems can assist the different categories of decision-making. Support your answer "
  "with some examples from the stimulus.",
  8,
