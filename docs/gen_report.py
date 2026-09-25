@@ -341,6 +341,60 @@ body(doc, "Timing: after the competition core is stable - not before the deadlin
           "a concrete roadmap to add fine-tuning for offline deployment, with the 4 TSRs as the "
           "training corpus.'")
 
+# ============ 4.5 THE FIVE APPLICATIONS ============
+h1(doc, "4.5 The Five Applications (Phase 3-6, delivered)")
+body(doc, "Beyond the marking engine, the platform now ships five teacher- and student-facing "
+          "applications on top of one engine, one knowledge base and one privacy layer. All were "
+          "built and verified end-to-end with real LLM calls (25 September 2026), backed by 118 "
+          "automated tests across 7 suites plus the live marking regression (test_mark: 6/6 gradings, "
+          "cache verified).")
+
+create_table(doc, ["Application", "What it does", "End-to-end verification"], [
+    ["Marking (upgraded)",
+     "Privacy-scrubbed pipeline (anonymise before the model, restore only for display); "
+     "'suggested mark' tone throughout; feedback quotes the official marking guidelines verbatim; "
+     "teachers can add their own questions via a form and mark them immediately",
+     "Custom question saved (custom-1 with 3 parsed criteria) and marked 4/4; rubric quotes "
+     "verified in live output"],
+    ["Lesson Planner",
+     "Tick NESA syllabus dot points (all 180 extracted from the official digital syllabus), "
+     "optionally paste the school's own material, generate a timed lesson plan: objectives, "
+     "lesson flow, assessment point, explicit syllabus alignment",
+     "Full Year 12 Data science plan generated: 4 objectives, 6 timed segments, exit-ticket "
+     "assessment, 3/3 alignment"],
+    ["Students",
+     "Progress tracker (current level, trend with numeric evidence, weak areas, 3-5 concrete "
+     "recommendations) + NESA-style personalised report comments that blend in the teacher's own "
+     "notes with correct pronouns",
+     "Trend detected 33% -> 67% -> 100% (+67 pts); comment generated with teacher note "
+     "'aim to achieve top results' naturally integrated"],
+    ["Practice & Ask",
+     "Targeted practice generation from selected syllabus points / weak areas; student Q&A "
+     "grounded strictly in official NESA material, with sources cited and an honest "
+     "'not covered in course material' path",
+     "HSC-style scenario questions with marking points generated; interval-vs-ratio question "
+     "answered with TSR citations"],
+    ["Lesson Review",
+     "Upload a lesson recording (faster-whisper transcription) or paste a transcript; per-dot-point "
+     "coverage check with quoted evidence, strengths, missed items, next-lesson recommendations",
+     "Coverage check correctly identified covered points vs missed points (interval/ratio, "
+     "sampling) with transcript quotes"],
+], col_widths=[3.2, 7.4, 5.4])
+
+h2(doc, "4.5.1 Privacy layer - anonymise before the model sees anything")
+body(doc, "Team requirement: student data is proprietary. The pipeline now scrubs names, emails and "
+          "phone numbers (deterministic replacement, no ML guesswork) before the answer reaches any "
+          "LLM, and restores the real values only in the local display layer. If the privacy module "
+          "ever fails, marking degrades with an explicit warning rather than silently leaking data.")
+bullet(doc, "21 tests including word-boundary safety ('Ann' never matches 'Announcement'), Chinese-name support, and round-trip fidelity", bold_prefix="Verified:")
+bullet(doc, "A live grading run proved zero leakage: the engine received [STUDENT_1]/[EMAIL_1] while the teacher's report showed real values", bold_prefix="End-to-end:")
+
+h2(doc, "4.5.2 One engine, five applications - the architecture story")
+body(doc, "Every application is a different exit from the same core: the dual-agent marking engine, "
+          "the TSR retrieval index, the 180-point syllabus dataset and the model abstraction layer. "
+          "New features are new interfaces and prompts, not new pipelines - which is why five "
+          "applications shipped in days without touching the validated core.")
+
 # ============ 5. VERIFICATION ============
 h1(doc, "5. How We Verified (Methodology)")
 body(doc, "To measure quality honestly we built a Golden Set - the same pattern used in academic grading "
@@ -386,17 +440,19 @@ create_table(doc, ["Issue", "Root cause", "Fix"], [
 
 # ============ 8. HOW TO RUN ============
 h1(doc, "8. How to Run It")
-code(doc, "cd ai-coach\npip install -r requirements.txt     # openai, python-dotenv, langgraph, chromadb, gradio, sentence-transformers\n# .env: DEEPSEEK_API_KEY=sk-... DEEPSEEK_BASE_URL=https://api.deepseek.com/v1\npython3 app.py                      # Gradio UI at http://127.0.0.1:7860\npython3 tests/test_llm.py           # model connectivity\npython3 tests/run_golden.py         # full 32-answer regression (~30-45 min)")
-body(doc, "The demo concept page (ai-coach/demo/index.html) shows the intended UX without any backend.")
+code(doc, "cd ai-coach\npip install -r requirements.txt     # openai, python-dotenv, langgraph, chromadb, gradio, sentence-transformers\n# .env: DEEPSEEK_API_KEY=sk-... DEEPSEEK_BASE_URL=https://api.deepseek.com/v1\npython3 app.py                      # Gradio UI at http://127.0.0.1:7860 (5 tabs)\npython3 tests/test_llm.py           # model connectivity\npython3 tests/test_mark.py          # live marking regression: 6/6 gradings + cache check (~3 min)\npython3 tests/run_golden.py         # full 32-answer regression (~30-45 min)\n# fast suites (no LLM, ~seconds each):\n#   tests/test_privacy.py (21) · test_store.py (9) · test_custom_questions.py (10)\n#   test_lesson_planner.py (16) · test_students.py (20) · test_student_coach.py (21)\n#   test_transcript_analyzer.py (21)")
+body(doc, "The demo concept page (ai-coach/demo/index.html) shows the intended UX without any backend. "
+          "The judge walkthrough is scripted in docs/demo_script.md.")
 
 # ============ 9. NEXT ============
 h1(doc, "9. What Is Next")
-bullet(doc, "Live now via a Cloudflare Tunnel (see 'Try It Live'). Optional upgrade: a permanent host (e.g. HF Spaces PRO or Render) so the demo is online without the laptop", bold_prefix="Public demo:")
-bullet(doc, "Workflow 2 (report generation from spreadsheets) on the second graph slot in the architecture", bold_prefix="Report feedback:")
-bullet(doc, "Follow-up chat so a student can ask 'why did I lose the mark?' - the real-time coach experience", bold_prefix="Coaching chat:")
+bullet(doc, "Five applications delivered (section 4.5). Remaining: the team trial round and judge rehearsal driven by docs/demo_script.md, plus a recorded backup video for network insurance", bold_prefix="Just delivered:")
+bullet(doc, "Follow-up chat inside marking so a student can ask 'why did I lose the mark?' on their own answer - the Practice & Ask tab already answers syllabus questions; wiring it to the marking context is the next increment", bold_prefix="Coaching chat:")
+bullet(doc, "Mind-map generation on the student side (deferred from the L3 scope)", bold_prefix="Student mind maps:")
 bullet(doc, "Photo upload with DeepSeek's vision model (deepseek-v4-flash-vision-exp exists on our key) or a local vision model", bold_prefix="Handwritten answers:")
-bullet(doc, "Gemini free tier / local Ollama swap to tell the open-weight story in the pitch", bold_prefix="Model swap demo:")
+bullet(doc, "Permanent host (Render / HF PRO) so the demo is online without the laptop; local SQLite already gives schools a self-contained data story", bold_prefix="Deployment:")
 bullet(doc, "Roadmap in section 4.7: grow the Golden Set to ~300 labels, LoRA-fine-tune a small open-weight Marker, keep the cloud Verifier as auditor, and run fully offline", bold_prefix="Fine-tuning:")
+bullet(doc, "The syllabus dataset (180 dot points) and the five-application architecture generalise to other qualitative subjects - the engine is not Enterprise-Computing-specific", bold_prefix="Beyond one subject:")
 
 # ============ APPENDIX ============
 h1(doc, "Appendix A - Data Sources")
