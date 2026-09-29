@@ -66,6 +66,7 @@ I18N = {
         "err_backend": "批改引擎尚未就绪：无法导入 graphs.mark_graph。",
         "err_backend_hint": "请先在后端实现 `mark_answer(question_id, student_answer)`（见 app.py 头部约定），或确认运行目录为项目根。",
         "err_unknown": "批改服务返回异常：",
+        "err_insufficient_balance": "DeepSeek 账户余额不足。请在 DeepSeek 平台充值，或配置其他模型后重试。",
         "res_title": "批改结果",
         "status_approved": "已批改",
         "status_flagged": "需人工复核",
@@ -239,31 +240,32 @@ I18N = {
         "no_ex": "No {kind} example available for this question — please type your own answer.",
         "no_ex_good": "good",
         "no_ex_bad": "bad",
-        "mark_btn": "Mark my answer",
+        "mark_btn": "Review Against Criteria",
         "marking": "AI is marking…",
         "err_empty": "Please select a question and enter an answer first.",
         "err_backend": "Marking engine not ready: cannot import graphs.mark_graph.",
         "err_backend_hint": "Implement `mark_answer(question_id, student_answer)` in the backend (contract in app.py header), or run from the project root.",
         "err_unknown": "Marking service returned an error:",
+        "err_insufficient_balance": "DeepSeek reports insufficient account balance. Add credits to your DeepSeek account, then try again.",
         "res_title": "Marking result",
-        "status_approved": "Approved",
+        "status_approved": "Assessment Summary",
         "status_flagged": "Flagged for review",
         "status_error": "Marking failed",
         "conf": "Confidence",
-        "confHigh": "High confidence",
-        "confMedium": "Medium confidence",
-        "confLow": "Low confidence",
-        "attempts": "Attempts",
-        "fb_good": "Strengths",
-        "fb_improve": "To improve",
-        "fb_rule": "Rubric reference",
+        "confHigh": "Evidence Strength: High",
+        "confMedium": "Evidence Strength: Medium",
+        "confLow": "Evidence Strength: Low",
+        "attempts": "Submission Attempt",
+        "fb_good": "Demonstrated Understanding",
+        "fb_improve": "Next Steps",
+        "fb_rule": "Alignment to Criteria",
         "fb_other": "Feedback",
         "flags_head": "Flags",
         "just_head": "Justification",
         "raw_label": "Raw response (JSON)",
         "marks_unit": "",
         "q_marks_suffix": "marks",
-        "score_label": "Suggested mark · teacher confirmation",
+        "score_label": "Suggested mark · teacher confirms",
         "footer": "CoachAI · aligned with NESA official marking guidelines",
         "err_import_title": "Backend marking module unavailable",
         "add_q_label": "Add your own question",
@@ -406,6 +408,9 @@ I18N = {
     },
 }
 
+# Chinese UI is disabled for this local copy; keep old zh initializers rendering in English.
+I18N["zh"] = I18N["en"]
+
 FB_TYPE = {
     "good": ("#2E7D32", "#E8F2E8"),
     "improve": ("#B26A00", "#FDF3E0"),
@@ -536,7 +541,7 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
 
     conf_pct = res.get("confidence_pct")
     conf_lvl = str(res.get("confidence_level", ""))
-    ring_color = {"high": "#2E7D32", "medium": "#B26A00", "low": "#C62828"}.get(conf_lvl, "#6B7684")
+    ring_color = {"high": "#3A5A40", "medium": "#8A5A12", "low": "#9E2B22"}.get(conf_lvl, "#5A6472")
     ring_lvl_txt = {"high": L.get("confHigh", ""), "medium": L.get("confMedium", ""),
                     "low": L.get("confLow", "")}.get(conf_lvl, "")
     pct_safe = max(0, min(100, int(conf_pct or 0)))
@@ -547,8 +552,8 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
         return ('<div class="coach-error">' + msg
                 + f'<div class="hint">status=error · {qid}</div></div>')
 
-    stat_style = {"approved": ("#E8F2E8", "#2E7D32", "#1B5E20"),
-                  "flagged": ("#FDF3E0", "#E69F00", "#8A5A00")}.get(status, ("#F4F6F8", "#6B7684", "#4A5568"))
+    stat_style = {"approved": ("", "", "#3A5A40"),
+                  "flagged": ("", "", "#8A5A12")}.get(status, ("", "", "#5A6472"))
     sbg, sbc, sfg = stat_style
     stat_txt = L.get(f"status_{status}", status)
 
@@ -561,12 +566,13 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
              f'<span class="max">{suffix}</span></div></div>')
     h.append('<div class="r-right">')
     if conf_pct is not None:
-        h.append(f'<div class="conf-ring" style="--rc:{ring_color};--pct:{pct_safe}%">'
-                 f'<div class="ring-in"><span class="pct">{pct_safe}%</span>'
-                 f'<span class="lvl" style="color:{ring_color}">{ring_lvl_txt}</span></div></div>')
+        h.append(f'<div class="conf-line">'
+                 f'<span class="conf-pct">{pct_safe}%</span>'
+                 f'<span class="conf-lbl" style="color:{ring_color}">{ring_lvl_txt}</span>'
+                 f'</div>')
     attempts = res.get("attempts")
     if attempts is not None:
-        h.append(f'<span class="pill">{L["attempts"]}: {attempts}</span>')
+        h.append(f'<span class="pill">{L["attempts"]} {attempts}</span>')
     h.append('</div></div>')
 
     # ---- status banner
@@ -580,12 +586,11 @@ def render_result_html(res: dict, qid: str, lang: str) -> str:
             if isinstance(item, str):
                 item = {"type": "other", "text": item}
             ftype = str(item.get("type", "other")).lower()
-            fcolor, fhead = {"good": ("#2E7D32", L.get("fb_good", "Strengths")),
-                             "improve": ("#B26A00", L.get("fb_improve", "To improve")),
-                             "rule": ("#1F4E79", L.get("fb_rule", "Marking rule"))}.get(
-                                 ftype, ("#6B7684", L.get("fb_other", "Feedback")))
+            fcolor, fhead = {"good": ("#3A5A40", L.get("fb_good", "Strengths")),
+                             "improve": ("#8A5A12", L.get("fb_improve", "To improve")),
+                             "rule": ("#24466B", L.get("fb_rule", "Marking rule"))}.get(
+                                 ftype, ("#5A6472", L.get("fb_other", "Feedback")))
             h.append('<div class="fb-item">'
-                     f'<div class="bar" style="background:{fcolor}"></div>'
                      '<div class="fb-body">'
                      f'<div class="fb-head" style="color:{fcolor}">{fhead}</div>'
                      f'<div class="fb-text">{item.get("text", "")}</div>'
@@ -757,6 +762,8 @@ def mark_answer_safe(qid: str, answer: str, lang: str):
 
     if res.get("status") == "error":
         msg = res.get("message") or res.get("error") or "unknown error"
+        if "insufficient balance" in str(msg).lower():
+            msg = L["err_insufficient_balance"]
         return err_card(f'{L["status_error"]} — {msg}'), res
     return render_result_html(res, qid, lang), res
 
@@ -790,11 +797,11 @@ def generate_plan_safe(dot_points, reference_text, year, duration_min, focus_are
 # ---------------------------------------------------------------- Students (Phase 5)
 # Trend tag colours: improving / stable / declining / volatile / not enough data.
 ST_TREND_COLOR = {
-    "improving": "#2F6D4F",
-    "stable": "#1F4E79",
-    "declining": "#B03A2E",
-    "volatile": "#B26A00",
-    "insufficient_data": "#8A93A0",
+    "improving": "#3A5A40",
+    "stable":    "#24466B",
+    "declining": "#9E2B22",
+    "volatile":  "#8A5A12",
+    "insufficient_data": "#6B7684",
 }
 
 
@@ -1102,7 +1109,7 @@ def answer_question_safe(student_question, context_note, year, ui_lang):
 # ---------------------------------------------------------------- Lesson review (Phase 6b)
 def tr_module_choices(year: str) -> list:
     """(label, value) pairs for the review-tab module filter; "" = whole year."""
-    return [("全部模块 / All modules", "")] + [(m, m) for m in lp_modules(year)]
+    return [("All modules", "")] + [(m, m) for m in lp_modules(year)]
 
 
 def render_review_empty(lang: str) -> str:
@@ -1240,10 +1247,24 @@ def tr_analyze_safe(transcript_text, year, focus_area, lang):
 
 # ---------------------------------------------------------------- Gradio UI
 PAGE_CSS = """
-:root { --paper:#FAFAF7; --ink:#1A2332; --blue:#1F4E79; --blue-hover:#143A5C;
-        --orange:#E69F00; --orange-deep:#C77F00; --line:#E8E2D8; --card:#FFFFFF;
-        --red:#B03A2E; --rule:#E2DED4;
-        --soft:#F5F2EC; --serif: Georgia, "Times New Roman", "Songti SC", "SimSun", serif; }
+:root { 
+    color-scheme: light !important;
+    --paper:#FAFAF7; 
+    --ink:#1A2332; 
+    --blue:#1F4E79; 
+    --blue-hover:#143A5C;
+    --orange:#E69F00; 
+    --orange-deep:#C77F00; 
+    --line:#E8E2D8; 
+    --card:#FFFFFF;
+    --red:#B03A2E; 
+    --rule:#E2DED4;
+    --soft:#F5F2EC; 
+    --serif: "Source Serif 4", "Iowan Old Style", "Charter", Palatino, Georgia, "Songti SC", "SimSun", serif; 
+}
+:root.dark, html.dark, body.dark, .dark { color-scheme: light !important; }
+button[aria-label*="theme" i], button[title*="theme" i],
+#theme-toggle, .theme-toggle { display: none !important; }
 body { background: var(--paper) !important; }
 body, .gradio-container { color: var(--ink); }
 .gradio-container { max-width: 1120px !important; margin: 0 auto !important;
@@ -1253,43 +1274,43 @@ body, .gradio-container { color: var(--ink); }
 
 /* ---------- header ---------- */
 #coach-header { position: relative; background: var(--card); border:1px solid var(--line);
-    border-radius: 10px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 12px 32px rgba(26,35,50,.05);
+    border-radius: 2px; box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 12px 32px rgba(26,35,50,.05);
     padding: 30px 34px 26px; margin-top: 26px; overflow: hidden; }
 #coach-header::before { content:""; position:absolute; top:0; left:0; right:0; height:3px;
     background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 62%, var(--orange) 62%, var(--orange) 100%); }
 #coach-header .logo { display:flex; align-items:center; gap:12px; }
 #coach-header .logo .mark { background: linear-gradient(135deg, #245A8C, var(--blue)); color:#fff;
-    border-radius:8px; width:42px; height:42px; display:inline-flex; align-items:center;
+    border-radius:2px; width:42px; height:42px; display:inline-flex; align-items:center;
     justify-content:center; font-size:.82em; font-weight:800; letter-spacing:1px;
     box-shadow: 0 4px 12px rgba(31,78,121,.25); }
 #coach-header .logo .brandname { font-family: var(--serif); font-weight:700; font-size:1.5em;
     letter-spacing:.2px; color: var(--ink); }
 #coach-header .logo .hsc-tag { color: var(--orange-deep); font-size:.68em; font-weight:700;
-    border:1.5px solid var(--orange); border-radius:4px; padding:2px 8px; letter-spacing:.6px;
+    border:1.5px solid var(--orange); border-radius:2px; padding:2px 8px; letter-spacing:.6px;
     margin-left:2px; }
 #coach-header .sub { color:#6B7684; font-size:.94em; margin-top:7px; line-height:1.5; }
 
 /* ---------- language segmented control ---------- */
-#lang-switch { background: var(--soft); border-radius:8px; padding:3px; display:inline-block; }
-#lang-switch button { border-radius: 6px !important; font-weight:600 !important;
+#lang-switch { background: var(--soft); border-radius:2px; padding:3px; display:inline-block; }
+#lang-switch button { border-radius: 2px !important; font-weight:600 !important;
     border: none !important; font-size:.88em !important; padding: 6px 16px !important; }
 #lang-switch .selected { background: var(--blue) !important; color:#fff !important;
     box-shadow: 0 2px 6px rgba(31,78,121,.3) !important; }
 #lang-switch button:not(.selected) { background: transparent !important; color:#5A6472 !important; }
 
 /* ---------- panels ---------- */
-.panel { background: var(--card); border:1px solid var(--line); border-radius:10px;
+.panel { background: var(--card); border:1px solid var(--line); border-radius:2px;
     box-shadow: 0 1px 2px rgba(26,35,50,.03), 0 8px 24px rgba(26,35,50,.04);
     padding: 26px 30px; margin: 4px 0 20px; }
 .panel label, .panel .label-wrap span { text-transform: uppercase; font-size: 11px !important;
     font-weight: 700 !important; letter-spacing: 1.2px !important; color:#7A8494 !important; }
-.panel textarea, .panel input { border:1px solid #DCD5C9 !important; border-radius:6px !important;
+.panel textarea, .panel input { border:1px solid #DCD5C9 !important; border-radius:2px !important;
     background:#FDFCFA !important; font-size: .98em !important; }
 .panel textarea:focus, .panel input:focus { border-color: var(--blue) !important;
     box-shadow: 0 0 0 3px rgba(31,78,121,.12) !important; }
 
 /* ---------- question preview ---------- */
-#q-preview { background: var(--soft); border:1px solid var(--line); border-radius:8px;
+#q-preview { background: var(--soft); border:1px solid var(--line); border-radius:2px;
     padding:18px 22px; line-height:1.7; font-size:.97em; color:#33404F; margin-top:4px; }
 #q-preview .q-meta { color: var(--blue); font-size:.75em; font-weight:800; letter-spacing:1.4px;
     text-transform: uppercase; margin-bottom:8px; }
@@ -1305,6 +1326,16 @@ body, .gradio-container { color: var(--ink); }
 #mark-btn:hover, #lp-gen-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(31,78,121,.35) !important; }
 #mark-btn:active, #lp-gen-btn:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(31,78,121,.25) !important; }
 #mark-btn:disabled, #lp-gen-btn:disabled { opacity:.55 !important; }
+#mark-timing { margin: 8px 0 12px; color:#6B7684; font-size:.88em; }
+#mark-loading { margin: 12px 0 16px; }
+.mark-loading { display:flex; align-items:center; gap:12px; padding:12px 16px;
+    color:#33404F; background:#F5F2EC; border:1px solid #E8E2D8; border-radius:6px; }
+.mark-loading .spinner { width:18px; height:18px; flex:none; border:2px solid #C9D5E2;
+    border-top-color:var(--blue); border-radius:50%; animation:mark-spin .8s linear infinite; }
+.mark-loading strong { display:block; color:var(--ink); font-size:.92em; }
+.mark-loading span { display:block; color:#6B7684; font-size:.84em; margin-top:2px; }
+@keyframes mark-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mark-loading .spinner { animation:none; } }
 
 /* ---------- example radio ---------- */
 #ex-radio { display:flex; gap:10px; }
@@ -1391,6 +1422,16 @@ body, .gradio-container { color: var(--ink); }
 #lp-dots label { text-transform:none !important; letter-spacing:0 !important; font-weight:500 !important;
     font-size:.92em !important; color:#33404F !important; line-height:1.5; }
 #lp-counter p { font-size:.82em !important; color:#8A93A0 !important; margin: 2px 0 0; }
+
+span[data-testid="block-info"] {
+    color: #111827 !important;
+    opacity: 1 !important;
+}
+
+span.svelte-19qdtil {
+    color: ##2d3b57 !important;
+    opacity: 1 !important;
+}
 
 /* ---------- students tab (Phase 5) ---------- */
 #st-analyze-btn, #st-gen-btn { background: linear-gradient(180deg, #245A8C, var(--blue)) !important;
@@ -1517,25 +1558,56 @@ body, .gradio-container { color: var(--ink); }
 }
 """
 
+LIGHT_MODE_HEAD = """
+<script>
+(() => {
+    const forceLightMode = () => {
+        const root = document.documentElement;
+        if (root.classList.contains("dark")) root.classList.remove("dark");
+        root.style.colorScheme = "light";
+    };
+    forceLightMode();
+    new MutationObserver(forceLightMode).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+    });
+    let markingStartedAt = null;
+    window.setInterval(() => {
+        const panel = document.getElementById("mark-loading");
+        const elapsed = panel?.querySelector(".mark-elapsed");
+        const visible = panel && window.getComputedStyle(panel).display !== "none";
+        if (!visible) {
+            markingStartedAt = null;
+            return;
+        }
+        if (markingStartedAt === null) markingStartedAt = Date.now();
+        elapsed.textContent = `Elapsed: ${Math.floor((Date.now() - markingStartedAt) / 1000)}s`;
+    }, 250);
+})();
+</script>
+"""
+
 def build_ui() -> gr.Blocks:
     questions = load_questions()
+    gr.HTML(
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">'
+    )
     with gr.Blocks(title="CoachAI") as demo:
-        lang_state = gr.State("zh")
+        lang_state = gr.State("en")
         qid_state = gr.State(questions[0]["id"] if questions else None)
         # Phase 5: the last generated report comment, held for "save to records".
         st_last_report = gr.State(None)
 
-        # ---------- Top: brand + language switch ----------
+        # ---------- Top: brand ----------
         with gr.Row(elem_id="coach-header"):
             with gr.Column(scale=4):
                 title_md = gr.Markdown(
-                    f'<div class="logo"><span class="mark">AI</span><span class="brandname">CoachAI</span> '
+                    f'<div class="logo"><span class="mark">AI</span><span class="brandname">LessonLoop</span> '
                     f'<span style="color:#E69F00;font-size:.62em;font-weight:700;border:1.5px solid #E69F00;'
                     f'border-radius:4px;padding:2px 8px;vertical-align:middle">HSC</span></div>'
                     f'<div class="sub">{I18N["zh"]["subtitle"]}</div>')
-            with gr.Column(scale=1, elem_id="lang-switch"):
-                lang_radio = gr.Radio(["中文", "EN"], value="中文", show_label=False,
-                                      interactive=True, elem_id="lang-select")
 
         # ================= Tabs: Marking / Lesson planner =================
         with gr.Tabs(elem_id="coach-tabs"):
@@ -1556,6 +1628,16 @@ def build_ui() -> gr.Blocks:
 
                 # ---------- 3. Mark ----------
                 mark_btn = gr.Button(I18N["zh"]["mark_btn"], variant="primary", elem_id="mark-btn", size="lg")
+                mark_timing = gr.Markdown(
+                    "Typical response time: **20-40 seconds**.", elem_id="mark-timing")
+                mark_loading = gr.HTML(
+                    '<div class="mark-loading" role="status" aria-live="polite">'
+                    '<span class="spinner" aria-hidden="true"></span>'
+                    '<div><strong>Reviewing your response against the criteria</strong>'
+                    '<span>Marking in progress...</span>'
+                    '<span class="mark-elapsed" role="timer" aria-live="off">Elapsed: 0s</span>'
+                    '</div></div>',
+                    visible=False, elem_id="mark-loading")
                 result_md = gr.Markdown()
                 raw_accord = gr.Accordion(I18N["zh"]["raw_label"], open=False, elem_classes="panel")
                 with raw_accord:
@@ -1705,93 +1787,6 @@ def build_ui() -> gr.Blocks:
                 tr_status = gr.Markdown("", elem_id="tr-status")
                 tr_result = gr.HTML(render_review_empty("zh"), elem_id="tr-result")
 
-        # ---------- Language switch ----------
-        def set_lang(lang_choice, cur_qid, lp_selected, cp_selected):
-            lang = "en" if lang_choice == "EN" else "zh"
-            L = I18N[lang]
-            updates = {
-                # re-read the bank so custom questions saved earlier stay listed
-                q_dropdown: gr.update(choices=q_choices(load_questions(), lang), value=cur_qid,
-                                      label=L["q_label"], info=None),
-                ans_box: gr.update(label=L["ans_label"], placeholder=L["ans_ph"]),
-                ex_radio: gr.update(choices=[L["ex_good"], L["ex_bad"]], label=L["ex_label"]),
-                mark_btn: gr.update(value=L["mark_btn"]),
-                raw_accord: gr.update(label=L["raw_label"]),
-                q_preview: gr.update(value=q_preview_md(cur_qid, lang)),
-                title_md: gr.update(value=f'<div class="logo"><span class="mark">AI</span><span class="brandname">CoachAI</span> '
-                                          f'<span class="hsc-tag">HSC</span></div>'
-                                          f'<div class="sub">{L["subtitle"]}</div>'),
-                add_accord: gr.update(label=L["add_q_label"]),
-                cq_note: gr.update(value=L["add_q_note"]),
-                cq_text: gr.update(label=L["add_q_text_label"], placeholder=L["add_q_text_ph"]),
-                cq_marks: gr.update(label=L["add_q_marks_label"]),
-                cq_criteria: gr.update(label=L["add_q_criteria_label"], placeholder=L["add_q_criteria_ph"]),
-                cq_sample: gr.update(label=L["add_q_sample_label"], placeholder=L["add_q_sample_ph"]),
-                cq_save: gr.update(value=L["add_q_btn"]),
-                # ---- Phase 4: tabs + lesson planner ----
-                tab_mark: gr.update(label=L["tab_mark"]),
-                tab_lesson: gr.update(label=L["tab_lesson"]),
-                lp_year: gr.update(label=L["lp_year_label"]),
-                lp_module: gr.update(label=L["lp_module_label"]),
-                lp_hint: gr.update(value=L["lp_dp_hint"]),
-                lp_dots: gr.update(label=L["lp_dp_label"]),
-                lp_counter: gr.update(value=L["lp_dp_count"].format(n=len(lp_selected or []))),
-                lp_ref: gr.update(label=L["lp_ref_label"], placeholder=L["lp_ref_ph"]),
-                lp_dur: gr.update(label=L["lp_dur_label"]),
-                lp_btn: gr.update(value=L["lp_gen_btn"]),
-                # ---- Phase 5: students tab ----
-                tab_students: gr.update(label=L["tab_students"]),
-                st_student: gr.update(label=L["st_student_label"], info=None),
-                st_analyze_btn: gr.update(value=L["st_analyze_btn"]),
-                st_period: gr.update(label=L["st_period_label"]),
-                st_notes: gr.update(label=L["st_notes_label"], placeholder=L["st_notes_ph"]),
-                st_gen_btn: gr.update(value=L["st_gen_btn"]),
-                st_save_btn: gr.update(value=L["st_save_btn"]),
-                # ---- Phase 6a: practice / Q&A tab ----
-                tab_practice: gr.update(label=L["tab_practice"]),
-                cp_year: gr.update(label=L["cp_year_label"]),
-                cp_module: gr.update(label=L["cp_module_label"]),
-                cp_hint: gr.update(value=L["cp_dp_hint"]),
-                cp_dots: gr.update(label=L["cp_dp_label"]),
-                cp_counter: gr.update(value=L["cp_dp_count"].format(n=len(cp_selected or []))),
-                cp_count: gr.update(label=L["cp_count_label"]),
-                cp_gen_btn: gr.update(value=L["cp_gen_btn"]),
-                cp_q_box: gr.update(label=L["cp_q_label"], placeholder=L["cp_q_ph"]),
-                cp_context: gr.update(label=L["cp_context_label"], placeholder=L["cp_context_ph"]),
-                cp_ask_btn: gr.update(value=L["cp_ask_btn"]),
-                # ---- Phase 6b: lesson review tab ----
-                tab_review: gr.update(label=L["tab_review"]),
-                tr_year: gr.update(label=L["tr_year_label"]),
-                tr_module: gr.update(label=L["tr_module_label"], info=None),
-                tr_audio: gr.update(label=L["tr_audio_label"]),
-                tr_transcribe_btn: gr.update(value=L["tr_transcribe_btn"]),
-                tr_text: gr.update(label=L["tr_text_label"], placeholder=L["tr_text_ph"]),
-                tr_analyze_btn: gr.update(value=L["tr_analyze_btn"]),
-            }
-            order = (q_dropdown, ans_box, ex_radio, mark_btn, raw_accord, q_preview, title_md,
-                     add_accord, cq_note, cq_text, cq_marks, cq_criteria, cq_sample, cq_save,
-                     tab_mark, tab_lesson, lp_year, lp_module, lp_hint, lp_dots, lp_counter,
-                     lp_ref, lp_dur, lp_btn, tab_students, st_student, st_analyze_btn,
-                     st_period, st_notes, st_gen_btn, st_save_btn,
-                     tab_practice, cp_year, cp_module, cp_hint, cp_dots, cp_counter,
-                     cp_count, cp_gen_btn, cp_q_box, cp_context, cp_ask_btn,
-                     tab_review, tr_year, tr_module, tr_audio, tr_transcribe_btn,
-                     tr_text, tr_analyze_btn)
-            return [lang, *[updates[c] for c in order]]
-
-        lang_radio.change(fn=set_lang,
-                          inputs=[lang_radio, qid_state, lp_dots, cp_dots],
-                          outputs=[lang_state, q_dropdown, ans_box, ex_radio, mark_btn, raw_accord,
-                                   q_preview, title_md, add_accord, cq_note, cq_text, cq_marks,
-                                   cq_criteria, cq_sample, cq_save, tab_mark, tab_lesson,
-                                   lp_year, lp_module, lp_hint, lp_dots, lp_counter,
-                                   lp_ref, lp_dur, lp_btn, tab_students, st_student,
-                                   st_analyze_btn, st_period, st_notes, st_gen_btn, st_save_btn,
-                                   tab_practice, cp_year, cp_module, cp_hint, cp_dots,
-                                   cp_counter, cp_count, cp_gen_btn, cp_q_box, cp_context,
-                                   cp_ask_btn, tab_review, tr_year, tr_module, tr_audio,
-                                   tr_transcribe_btn, tr_text, tr_analyze_btn])
-
         # ---------- Sample answer fill ----------
         def on_q_change(qid, lang):
             if not qid:
@@ -1853,8 +1848,14 @@ def build_ui() -> gr.Blocks:
             html_out, raw = mark_answer_safe(qid, answer, lang)
             return html_out, raw
 
-        mark_btn.click(fn=on_mark, inputs=[qid_state, ans_box, lang_state],
-                       outputs=[result_md, raw_json])
+        mark_btn.click(fn=lambda: gr.update(visible=True), outputs=[mark_loading],
+                       show_progress="hidden").then(
+            fn=on_mark, inputs=[qid_state, ans_box, lang_state],
+            outputs=[result_md, raw_json], show_progress="hidden",
+        ).then(
+            fn=lambda: gr.update(visible=False), outputs=[mark_loading],
+            show_progress="hidden",
+        )
 
         q_dropdown.change(fn=on_q_change, inputs=[q_dropdown, lang_state],
                           outputs=[qid_state, q_dropdown, q_preview])
@@ -1954,7 +1955,30 @@ def build_ui() -> gr.Blocks:
 
 if __name__ == "__main__":
     app = build_ui()
+    theme = GradioDefault(primary_hue=gradio_colors.blue, neutral_hue=gradio_colors.gray).set(
+        body_background_fill="#FAFAF7",
+        body_background_fill_dark="#FAFAF7",
+        body_text_color="#1A2332",
+        body_text_color_dark="#1A2332",
+        body_text_color_subdued="#5A6472",
+        body_text_color_subdued_dark="#5A6472",
+        background_fill_primary="#FFFFFF",
+        background_fill_primary_dark="#FFFFFF",
+        background_fill_secondary="#F5F2EC",
+        background_fill_secondary_dark="#F5F2EC",
+        block_background_fill="#FFFFFF",
+        block_background_fill_dark="#FFFFFF",
+        block_border_color="#E8E2D8",
+        block_border_color_dark="#E8E2D8",
+        panel_background_fill="#FFFFFF",
+        panel_background_fill_dark="#FFFFFF",
+        input_background_fill="#FDFCFA",
+        input_background_fill_dark="#FDFCFA",
+        input_border_color="#DCD5C9",
+        input_border_color_dark="#DCD5C9",
+        input_placeholder_color="#7A8494",
+        input_placeholder_color_dark="#7A8494",
+    )
     app.queue(default_concurrency_limit=4).launch(
-        server_name="127.0.0.1", server_port=7860, show_error=True, quiet=False,
-        theme=GradioDefault(primary_hue=gradio_colors.blue, neutral_hue=gradio_colors.gray),
-        css=PAGE_CSS)
+        server_name="127.0.0.1", server_port=7862, show_error=True, quiet=False, share=True,
+        theme=theme, css=PAGE_CSS, head=LIGHT_MODE_HEAD)

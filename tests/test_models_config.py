@@ -32,6 +32,15 @@ def test_ollama_registered():
     check("ollama in PROVIDER_DEFAULT_MODEL", "ollama" in m.PROVIDER_DEFAULT_MODEL)
 
 
+def test_openai_default():
+    check("OpenAI is default provider", m.DEFAULT_PROVIDER == "openai")
+    check("OpenAI default base URL",
+        m.PROVIDER_DEFAULT_BASE_URL["openai"] == os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"))
+    check("OpenAI default model is configured",
+        m.DEFAULT_MODEL == os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    check("Gemini remains available", "gemini" in m.PROVIDER_ENV_KEY)
+
+
 def test_ollama_defaults():
     check("ollama base url default",
           m.PROVIDER_DEFAULT_BASE_URL["ollama"] == os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1"))
@@ -69,6 +78,7 @@ def test_unsupported_provider_raises():
 
 if __name__ == "__main__":
     test_ollama_registered()
+    test_openai_default()
     test_ollama_defaults()
     test_ollama_client_no_key()
     test_default_model_for()

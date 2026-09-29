@@ -39,8 +39,8 @@ NESA materials -> vector store -> [RAG] -> LangGraph state machine:
 
 Every application is a different exit from the same core (engine + retrieval index +
 syllabus dataset + model abstraction layer). All LLM calls go through
-`agents/models.py complete()` — swapping providers (DeepSeek now, Gemini free tier /
-local Ollama) is one config line.
+`agents/models.py complete()` — OpenAI is the default provider, with optional Gemini,
+DeepSeek, and local Ollama support through the same model layer.
 
 See `docs/figures/` for architecture diagrams.
 
@@ -48,7 +48,7 @@ See `docs/figures/` for architecture diagrams.
 
 ```bash
 pip install -r requirements.txt
-# .env: DEEPSEEK_API_KEY=... DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+# .env: OPENAI_API_KEY=... (see .env.example for model and endpoint defaults)
 python3 app.py                # Gradio UI at http://127.0.0.1:7860 (5 tabs)
 python3 tests/run_golden.py   # full 32-answer regression (~30-45 min)
 python3 tests/test_mark.py    # live marking check: 6/6 gradings + cache (~3 min)
@@ -56,6 +56,9 @@ python3 tests/test_mark.py    # live marking check: 6/6 gradings + cache (~3 min
 #   test_lesson_planner (16) · test_students (20) · test_student_coach (21)
 #   test_transcript_analyzer (21)
 ```
+
+Keep the API key in `.env` locally and add `OPENAI_API_KEY` as a deployment secret;
+never commit `.env` or put a real key in `.env.example`.
 
 ## Data sources (traceable)
 
