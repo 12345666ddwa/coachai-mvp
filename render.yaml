@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: coachai-demo
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: |
+      pip install -r requirements.txt
+      python3 -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+    startCommand: python3 app.py
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false            # set manually in the Render dashboard (never in git)
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: HF_HUB_DISABLE_TELEMETRY
+        value: "1"

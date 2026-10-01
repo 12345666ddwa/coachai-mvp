@@ -4,3 +4,4 @@ langgraph>=1.2
 chromadb>=1.5
 gradio>=6.0
 sentence-transformers>=5.0
+faster-whisper>=1.0

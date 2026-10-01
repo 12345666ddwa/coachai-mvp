@@ -9,7 +9,7 @@ __pycache__/
 venv/
 
 # Data/cache (large local artifacts excluded; core data files kept)
-data/chroma_db/
+
 !data/.gitkeep
 !data/questions.json
 !data/syllabus.json
