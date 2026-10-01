@@ -19,3 +19,7 @@ data/chroma_db/
 .idea/
 .vscode/
 .DS_Store
+
+# Gradio runtime artifacts (locally generated, never commit)
+.gradio/
+*.pem

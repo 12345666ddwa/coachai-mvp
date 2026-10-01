@@ -339,6 +339,12 @@ def generate_lesson_plan(
     dot_points = _clean_dot_points(selected_dot_points)
     if not dot_points:
         raise ValueError("[lesson_planner] at least one syllabus dot point is required")
+    if len(dot_points) > 12:
+        raise ValueError(
+            f"[lesson_planner] too many dot points for a single lesson "
+            f"({len(dot_points)} selected; the maximum is 12). "
+            f"Please narrow the selection to the points this one lesson should cover."
+        )
 
     year = str(year or "Year 11").strip() or "Year 11"
     try:
@@ -369,7 +375,7 @@ def generate_lesson_plan(
     last_err = None
     for temp, extra in attempts:
         try:
-            raw = complete(system, user + extra, temperature=float(temp), max_tokens=3000)
+            raw = complete(system, user + extra, temperature=float(temp), max_tokens=8192)
             data = extract_json_block(raw)
             return _normalize_plan(
                 data, dot_points, year, duration, focus_area, reference_text, bool(docs)

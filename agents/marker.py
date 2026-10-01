@@ -90,7 +90,10 @@ def extract_json_block(text: str) -> dict:
     last_err = None
     for cand in candidates:
         try:
-            obj = json.loads(cand)
+            # strict=False tolerates raw control characters (e.g. literal newlines
+            # inside quoted evidence strings), a common LLM JSON quirk that would
+            # otherwise fail with "Expecting ',' delimiter" errors.
+            obj = json.loads(cand, strict=False)
             if isinstance(obj, dict):
                 return obj
         except json.JSONDecodeError as exc:

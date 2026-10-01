@@ -279,6 +279,11 @@ def build_analysis_prompt(
                  f"evidence string in {lang_name}. Keep official syllabus terms, "
                  "module names and product names in their original form.")
 
+    lines.append("\n=== BREVITY ===")
+    lines.append("Keep every evidence string under 25 words. Keep lesson_summary, each "
+                 "strength, each missed item and each recommendation to a single short "
+                 "sentence. One coverage entry per dot point, in the given order.")
+
     lines.append("\nProduce the lesson review as a DRAFT the teacher will confirm. "
                  "Return ONLY the JSON object.")
     return system, "\n\n".join(lines)
@@ -410,7 +415,7 @@ def analyze_lesson(
     for temp, extra in attempts:
         try:
             raw = complete(system, user + extra, temperature=float(temp),
-                           max_tokens=4000)
+                           max_tokens=8192)
             data = extract_json_block(raw)
             return _normalize_analysis(data, dots)
         except Exception as exc:  # noqa: BLE001 - parse/validation blip -> one retry
